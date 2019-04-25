@@ -45,9 +45,6 @@ lightning-faucet --lnd_ip=X.X.X.X
 ```
 
 Where `X.X.X.X` is the public, reachable IP address for your active `dcrlnd` node.
-The configuration for the faucet includes a TLS certificate provided by [Let's
-Encrypt](https://letsencrypt.org) so your faucet will be reachable over `https`
-by default.
 
 To enable HTTPS support via [Let's Encrypt](https://letsencrypt.org), specify 
 a few additional options:
