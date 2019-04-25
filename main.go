@@ -20,7 +20,7 @@ import (
 
 var (
 	// netParams is the Bitcoin network that the faucet is operating on.
-	netParams = flag.String("net", "testnet", "bitcoin network to operate on")
+	netParams = flag.String("net", "testnet", "decred network to operate on")
 
 	// lndNodes is a list of lnd nodes that the faucet should connect out
 	// to.
@@ -36,8 +36,12 @@ var (
 	lndIP = flag.String("lnd_ip", "10.0.0.9", "the public IP address of "+
 		"the faucet's node")
 
-	// port is the port that the http server should listen on.
-	port = flag.String("port", "8080", "port to list for http")
+	// bindAddr is the port that the http server should listen on.
+	bindAddr = flag.String("bind_addr", ":80", "port to list for http")
+
+	// useLeHTTPS indicates whether we should bind to the https port and
+	// use the lets encrypt service to get a certificate for it.
+	useLeHTTPS = flag.Bool("use_le_https", false, "use https via lets encrypt")
 
 	// wipeChannels is a bool that indicates if all channels should be
 	// closed (either cooperatively or forcibly) on startup. If all
@@ -55,7 +59,7 @@ var (
 
 	// network is the network the faucet is running on. This value must
 	// either be "litecoin" or "bitcoin".
-	network = flag.String("network", "bitcoin", "the network of the "+
+	network = flag.String("network", "decred", "the network of the "+
 		"faucet")
 )
 
@@ -142,33 +146,37 @@ func main() {
 	// the global http handler.
 	http.Handle("/", r)
 
-	// Create a directory cache so the certs we get from Let's Encrypt are
-	// cached locally. This avoids running into their rate-limiting by
-	// requesting too many certs.
-	certCache := autocert.DirCache("certs")
+	if !*useLeHTTPS {
+		go http.ListenAndServe(*bindAddr, r)
+	} else {
+		// Create a directory cache so the certs we get from Let's
+		// Encrypt are cached locally. This avoids running into their
+		// rate-limiting by requesting too many certs.
+		certCache := autocert.DirCache("certs")
 
-	// Create the auto-cert manager which will automatically obtain a
-	// certificate provided by Let's Encrypt.
-	m := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		Cache:      certCache,
-		HostPolicy: autocert.HostWhitelist(*domain),
-	}
+		// Create the auto-cert manager which will automatically obtain a
+		// certificate provided by Let's Encrypt.
+		m := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			Cache:      certCache,
+			HostPolicy: autocert.HostWhitelist(*domain),
+		}
 
-	// As we'd like all requests to default to https, redirect all regular
-	// http requests to the https version of the faucet.
-	go http.ListenAndServe(":80", m.HTTPHandler(nil))
+		// As we'd like all requests to default to https, redirect all regular
+		// http requests to the https version of the faucet.
+		go http.ListenAndServe(*bindAddr, m.HTTPHandler(nil))
 
-	// Finally, create the http server, passing in our TLS configuration.
-	httpServer := &http.Server{
-		Handler:      r,
-		WriteTimeout: 30 * time.Second,
-		ReadTimeout:  30 * time.Second,
-		Addr:         ":https",
-		TLSConfig:    &tls.Config{GetCertificate: m.GetCertificate},
-	}
-	if err := httpServer.ListenAndServeTLS("", ""); err != nil {
-		log.Fatal(err)
+		// Finally, create the http server, passing in our TLS configuration.
+		httpServer := &http.Server{
+			Handler:      r,
+			WriteTimeout: 30 * time.Second,
+			ReadTimeout:  30 * time.Second,
+			Addr:         ":https",
+			TLSConfig:    &tls.Config{GetCertificate: m.GetCertificate},
+		}
+		if err := httpServer.ListenAndServeTLS("", ""); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	c := make(chan os.Signal, 1)

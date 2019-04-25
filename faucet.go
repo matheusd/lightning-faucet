@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,12 +16,12 @@ import (
 
 	macaroon "gopkg.in/macaroon.v2"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/lightningnetwork/lnd/macaroons"
+	"github.com/decred/dcrd/chaincfg/chainhash"
+	"github.com/decred/dcrd/dcrutil"
+	"github.com/decred/dcrd/wire"
+	"github.com/decred/dcrlnd/lnrpc"
+	"github.com/decred/dcrlnd/macaroons"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -30,7 +29,7 @@ import (
 const (
 	// maxChannelSize is the larget channel that the faucet will create to
 	// another peer.
-	maxChannelSize int64 = (1 << 24)
+	maxChannelSize int64 = (1 << 30)
 
 	// minChannelSize is the smallest channel that the faucet will extend
 	// to a peer.
@@ -38,13 +37,13 @@ const (
 )
 
 var (
-	lndHomeDir             = btcutil.AppDataDir("lnd", false)
+	lndHomeDir             = dcrutil.AppDataDir("dcrlnd", false)
 	defaultTLSCertFilename = "tls.cert"
 	tlsCertPath            = filepath.Join(lndHomeDir, defaultTLSCertFilename)
 
 	defaultMacaroonFilename = "admin.macaroon"
 	defaultMacaroonPath     = filepath.Join(
-		lndHomeDir, "data", "chain", "bitcoin", "testnet",
+		lndHomeDir, "data", "chain", "decred", "testnet",
 		defaultMacaroonFilename,
 	)
 )
@@ -395,16 +394,22 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command("git", "log", "--pretty=format:'%H'", "-n", "1")
-	cmd.Dir = os.Getenv("GOPATH") + "/src/github.com/lightningnetwork/lnd"
-	gitHash, err := cmd.Output()
-	if err != nil {
-		gitHash = []byte{}
-	}
+	/*
+		cmd := exec.Command("git", "log", "--pretty=format:'%H'", "-n", "1")
+		cmd.Dir = os.Getenv("GOPATH") + "/src/github.com/lightningnetwork/lnd"
+		gitHash, err := cmd.Output()
+		if err != nil {
+			gitHash = []byte{}
+		}
+	*/
+
+	// Fix up. I commented the above because I don't have the code in my
+	// vps.
+	gitHash := "0f1927992ec21d73500c81109463fd11cbe98163"
 
 	nodeAddr := fmt.Sprintf("%v@%v", nodeInfo.IdentityPubkey, *lndIP)
 	return &homePageContext{
-		NumCoins:      btcutil.Amount(walletBalance.ConfirmedBalance).ToBTC(),
+		NumCoins:      dcrutil.Amount(walletBalance.ConfirmedBalance).ToCoin(),
 		NumChannels:   nodeInfo.NumActiveChannels,
 		GitCommitHash: strings.Replace(string(gitHash), "'", "", -1),
 		NodeAddr:      nodeAddr,
@@ -535,18 +540,22 @@ func (l *lightningFaucet) openChannel(homeTemplate *template.Template,
 	// With the connection established (or already present) with the target
 	// peer, we'll now parse out the rest of the fields, performing
 	// validation and exiting early if any field is invalid.
-	chanSize, err := strconv.ParseInt(r.FormValue("amt"), 10, 64)
+	chanSizeFloat, err := strconv.ParseFloat(r.FormValue("amt"), 64)
 	if err != nil {
 		homeState.SubmissionError = ChanAmountNotNumber
 		homeTemplate.Execute(w, homeState)
 		return
 	}
-	pushAmt, err := strconv.ParseInt(r.FormValue("bal"), 10, 64)
+	pushAmtFloat, err := strconv.ParseFloat(r.FormValue("bal"), 64)
 	if err != nil {
 		homeState.SubmissionError = PushIncorrect
 		homeTemplate.Execute(w, homeState)
 		return
 	}
+
+	// Convert from input (dcr) to api (atoms) units.
+	chanSize := int64(chanSizeFloat * 1e8)
+	pushAmt := int64(pushAmtFloat * 1e8)
 
 	// With the initial validation complete, we'll now ensure the channel
 	// size and push amt meet our constraints.
@@ -577,7 +586,7 @@ func (l *lightningFaucet) openChannel(homeTemplate *template.Template,
 	openChanReq := &lnrpc.OpenChannelRequest{
 		NodePubkey:         nodePub,
 		LocalFundingAmount: chanSize,
-		PushSat:            pushAmt,
+		PushAtoms:          pushAmt,
 	}
 	log.Printf("attempting to create channel with params: %v",
 		spew.Sdump(openChanReq))

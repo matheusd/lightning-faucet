@@ -5,11 +5,11 @@
   <div class="col m3"> </div>
   <div class="center col s12 m6">
       <a href="/">
-          <h1 id="title" class="flow-text">{{ if eq .Network "bitcoin" }} Bitcoin {{else}} Litecoin {{end}} Testnet Lightning Network Faucet</h1>
+          <h1 id="title" class="flow-text">{{ if eq .Network "bitcoin" }} Bitcoin {{else}} Decred {{end}} Testnet Lightning Network Faucet</h1>
       </a>
       <ul class="collection">
           <li class="collection-item">{{ .NodeAddr }}</li>
-          {{if ne .GitCommitHash ""}}<li class="collection-item">Git Commit: lnd @ #<a href="https://github.com/lightningnetwork/lnd/tree/{{ .GitCommitHash }}" target="_new">{{ .GitCommitHash }}</a></li>{{end}}
+          {{if ne .GitCommitHash ""}}<li class="collection-item">Git Commit: lnd @ #<a href="https://github.com/decred/dcrlnd/tree/{{ .GitCommitHash }}" target="_new">{{ .GitCommitHash }}</a></li>{{end}}
       </ul>
   </div>
   <div class="col m3"> </div>
@@ -22,9 +22,9 @@
   <div class="center col m6">
       <div class="chan-form card-panel hoverable">
           {{if eq .ChannelTxid ""}}
-          <h6 class="flow-text">{{ .NumCoins }} {{ if eq .Network "bitcoin" }} BTC {{else}} LTC {{end}} are available for channel creation. </h6>
+          <h6 class="flow-text">{{ .NumCoins }} {{ if eq .Network "bitcoin" }} BTC {{else}} DCR {{end}} are available for channel creation. </h6>
               <h6 class="flow-text">The faucet has {{ .NumChannels }} active {{if eq .NumChannels 1}} channel {{else}} channels {{end}} on the network. </h6>
-              <h6 class="flow-text">The max channel size is 16 million satoshis. </h6>
+              <h6 class="flow-text">The max channel size is 10 DCR. </h6>
 
               {{ if eq .SubmissionError 8 }}
                   <h6 class="flow-text red">Channel already open with node.</h6>
@@ -57,7 +57,7 @@
                              id="amt" name="amt" type="text">
 
                           <label for="amt" data-error="{{ if eq .SubmissionError 3 4 5}}{{printf "%v" .SubmissionError}}{{end}}">
-                              Channel Amount (in satoshis)
+                              Channel Amount (in dcr)
                           </label>
                       </div>
                  </div>
@@ -70,7 +70,7 @@
                              {{end}}
                              id="bal" name="bal" type="text">
                           <label for="bal" data-error="{{ if eq .SubmissionError 6 7}}{{printf "%v" .SubmissionError}}{{end}}">
-                              Initial Balance (in satoshis)
+                              Initial Balance (in dcr)
                           </label>
                       </div>
                  </div>
@@ -84,7 +84,7 @@
           {{else}}
               <span class="flow-text">Channel successfully created!</span> </br>
               <span class="flow-text"> The broadcast funding transaction can be found
-                  <a href="https://testnet.smartbit.com.au/tx/{{.ChannelTxid}}">
+                  <a href="https://testnet.dcrdata.org/tx/{{.ChannelTxid}}">
                          here.
                   </a>
               </span> </br>
