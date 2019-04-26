@@ -394,18 +394,13 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 		return nil, err
 	}
 
-	/*
-		cmd := exec.Command("git", "log", "--pretty=format:'%H'", "-n", "1")
-		cmd.Dir = os.Getenv("GOPATH") + "/src/github.com/lightningnetwork/lnd"
-		gitHash, err := cmd.Output()
-		if err != nil {
-			gitHash = []byte{}
-		}
-	*/
-
-	// Fix up. I commented the above because I don't have the code in my
-	// vps.
-	gitHash := "0f1927992ec21d73500c81109463fd11cbe98163"
+	// Parse the git commit used to build the node, assuming it was built
+	// with `make install`.
+	gitHash := ""
+	if p := strings.LastIndex(nodeInfo.Version, "commit="); p > -1 && len(nodeInfo.Version)-p-7 >= 40 {
+		// Read the right-most 40 chars and assume it's the git hash.
+		gitHash = nodeInfo.Version[len(nodeInfo.Version)-40:]
+	}
 
 	nodeAddr := fmt.Sprintf("%v@%v", nodeInfo.IdentityPubkey, *lndIP)
 	return &homePageContext{
