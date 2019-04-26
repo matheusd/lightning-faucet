@@ -84,14 +84,39 @@
           {{else}}
               <span class="flow-text">Channel successfully created!</span> </br>
               <span class="flow-text"> The broadcast funding transaction can be found
-                  <a href="https://testnet.dcrdata.org/tx/{{.ChannelTxid}}">
+                  <a href="https://testnet.dcrdata.org/tx/{{.ChannelTxid}}" target="_blank">
                          here.
                   </a>
               </span> </br>
-              <span class="flow-text"> After {{.NumConfs}} {{if eq .NumConfs 1}}block is{{else}}blocks are {{end}} found on testnet, your channel will open. </span>
-              <div class="progress">
-                 <div class="indeterminate"></div>
-              </div>
+	      <div id="progressMsg">
+                  <span class="flow-text"> After {{.NumConfs}} {{if eq .NumConfs 1}}block is{{else}}blocks are {{end}} found on testnet, your channel will open. </span>
+	          <span class="flow-text">Confirmations so far: <span id="confirmCount">0</span></span>
+	          <div class="progress" id="progressIndicator">
+                     <div class="indeterminate"></div>
+                  </div>
+	      </div>
+	      <div id="successMsg" style="display: none;">
+			<span class="flow-text">Target confirmation count reached!</span>
+	      </div>
+
+		  <script>
+			  function checkTxResponse(resp) {
+				  console.log("got response from dcrdata: ", resp);
+				  $("#confirmCount").text(resp.confirmations);
+				  var targetConfirmations = {{.NumConfs}};
+				  if (resp.confirmations >= targetConfirmations) {
+					$("#progressMsg").hide();
+					$("#successMsg").removeAttr("style");
+				  } else {
+					setTimeout(checkTxMined, 1000*60);
+				  }
+			  }
+			  function checkTxMined() {
+				  var txid = "{{.ChannelTxid}}";
+				  $.get("https://testnet.dcrdata.org/api/tx/"+txid, checkTxResponse)
+			  }
+			  setTimeout(checkTxMined, 10000);
+		  </script>
           {{end}}
       </div>
   </div>
