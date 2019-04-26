@@ -7,6 +7,7 @@ The Lightning Network Faucet is a faucet that is currently deployed on the
 Decred testnet. The following faucets are currently available:
 
 - https://testnet-dcrln-01.matheusd.com
+- https://testnet-dcrln-01.davec.name
 
 The Testnet Lightning Faucet (TLF) is similar to other existing Decred 
 faucets.  However, rather then sending dcr directly on-chain to a user of
