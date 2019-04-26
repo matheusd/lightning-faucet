@@ -9,7 +9,7 @@
       </a>
       <ul class="collection">
           <li class="collection-item">{{ .NodeAddr }}</li>
-          {{if ne .GitCommitHash ""}}<li class="collection-item">Git Commit: lnd @ #<a href="https://github.com/decred/dcrlnd/tree/{{ .GitCommitHash }}" target="_new">{{ .GitCommitHash }}</a></li>{{end}}
+          {{if ne .GitCommitHash ""}}<li class="collection-item">Git Commit: dcrlnd @ #<a href="https://github.com/decred/dcrlnd/tree/{{ .GitCommitHash }}" target="_new">{{ .GitCommitHash }}</a></li>{{end}}
       </ul>
   </div>
   <div class="col m3"> </div>
