@@ -1,8 +1,31 @@
 {{define "footer"}}
 
-      <!--Import jQuery before materialize.js-->
-      <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-      <script type="text/javascript" src="/static/js/materialize.min.js"></script>
+    <footer>
+      <div class="h-100">
+        <div class="row mx-3 mx-lg-0 h-100">
+          <div class="col-md-8 col-12 px-0 px-lg-3 d-none d-md-block h-100">
+            <div class="d-flex justify-content-center h-100">
+              <div class="align-self-center">
+                {{if ne .NodeAddr ""}}
+                  {{ .NodeAddr }}<br />
+                {{end}}
+                {{if ne .GitCommitHash ""}}
+                  Git Commit: dcrlnd @ #{{ .GitCommitHash }}
+                {{end}}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4 col-12 footer__credit-column h-100">
+            <div class="d-flex justify-content-center h-100">
+              <div class="align-self-center">
+                <p class="mb-0">Decred developers | 2019<br>The source sode is available on <a href="https://github.com/matheusd/lightning-faucet">GitHub</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>
 {{end}}

@@ -1,7 +1,80 @@
-.chan-form {
-    margin-top: 1em;
+html {
+    position: relative;
+    min-height: 100%;
+    overflow-x: hidden;
 }
 
-#title {
-    color: white;
+body {
+    background: #efeded;
+    color: #48566E;
+    margin-bottom: 90px; /* must be the same as .footer height */
+}
+
+.header {
+    background: #091440;
+    margin-bottom: 20px;
+}
+
+.header .header-logo {
+    width: 190px;
+}
+
+@media (max-width: 1150px) {
+    .header {
+        margin-bottom: 0;
+    }
+}
+
+h1 {
+    color: #091440;
+}
+
+.content {
+    margin: auto;
+    max-width: 1120px;
+    background: white;
+    border: 1px solid #d6d6d6;
+}
+.ln-logo {
+    margin: auto;
+    width: 100%;
+    max-width: 300px;
+}
+
+footer {
+    font-size: 0.8rem;
+    background-color: #091440;
+    color: #8997a5;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 90px; /* must be the same as body margin-bottom */
+}
+
+.footer__credit-column {
+    position: absolute;
+    background-color: rgba(237,239,241,.1);
+    right: 0;
+    top: 0;
+    text-align: right;
+    color: #8997a5;
+}
+
+.btn-outline-primary--inverted {
+    background-color: #2970ff;
+    color: #fff;
+    -webkit-box-shadow: 0 5px 13px 0 rgba(61, 88, 115, 0.2);
+    box-shadow: 0 5px 13px 0 rgba(61, 88, 115, 0.2);
+}
+
+.btn-outline-primary--inverted:hover {
+    background-color: #1A59F7; 
+}
+
+.form-group {
+    font-weight: bold;
+}
+
+.progress { 
+    max-width: 350px;
 }

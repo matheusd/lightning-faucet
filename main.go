@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	// netParams is the Bitcoin network that the faucet is operating on.
+	// netParams is the Decred network that the faucet is operating on.
 	netParams = flag.String("net", "testnet", "decred network to operate on")
 
 	// lndNodes is a list of lnd nodes that the faucet should connect out
@@ -37,7 +37,7 @@ var (
 		"the faucet's node")
 
 	// bindAddr is the port that the http server should listen on.
-	bindAddr = flag.String("bind_addr", ":80", "port to list for http")
+	bindAddr = flag.String("bind_addr", ":80", "port to listen for http")
 
 	// useLeHTTPS indicates whether we should bind to the https port and
 	// use the lets encrypt service to get a certificate for it.
@@ -131,8 +131,6 @@ func main() {
 	// dedicated http.Handler.
 	r := mux.NewRouter()
 	r.HandleFunc("/", faucet.faucetHome).Methods("POST", "GET")
-	r.HandleFunc("/channels/active", faucet.activeChannels)
-	r.HandleFunc("/channels/pending", faucet.activeChannels)
 
 	// Next create a static file server which will dispatch our static
 	// files. We rap the file sever http.Handler is a handler that strips
@@ -147,6 +145,7 @@ func main() {
 	http.Handle("/", r)
 
 	if !*useLeHTTPS {
+		log.Printf("Listening on %s", *bindAddr)
 		go http.ListenAndServe(*bindAddr, r)
 	} else {
 		// Create a directory cache so the certs we get from Let's
@@ -164,6 +163,7 @@ func main() {
 
 		// As we'd like all requests to default to https, redirect all regular
 		// http requests to the https version of the faucet.
+		log.Printf("Listening on %s", *bindAddr)
 		go http.ListenAndServe(*bindAddr, m.HTTPHandler(nil))
 
 		// Finally, create the http server, passing in our TLS configuration.

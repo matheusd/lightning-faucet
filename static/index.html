@@ -1,128 +1,184 @@
-{{template "header"}}
+{{template "header" .}}
 
-<div class="row">
-
-  <div class="col m3"> </div>
-  <div class="center col s12 m6">
-      <a href="/">
-          <h1 id="title" class="flow-text">{{ if eq .Network "bitcoin" }} Bitcoin {{else}} Decred {{end}} Testnet Lightning Network Faucet</h1>
-      </a>
-      <ul class="collection">
-          <li class="collection-item">{{ .NodeAddr }}</li>
-          {{if ne .GitCommitHash ""}}<li class="collection-item">Git Commit: dcrlnd @ #<a href="https://github.com/decred/dcrlnd/tree/{{ .GitCommitHash }}" target="_new">{{ .GitCommitHash }}</a></li>{{end}}
-      </ul>
-  </div>
-  <div class="col m3"> </div>
-
+<div class="header py-3 px-5">
+  <a href="/">
+    <img class="header-logo" src="/static/images/logo.svg">
+  </a>
 </div>
 
-<div class="row">
-  <div class="col m3"> </div>
+<div class="content mb-3 p-4">
+  
+  <div class="row d-flex justify-content-center">
+    <h1 id="title" class="flow-text">Lightning Network Faucet</h1>
+  </div>
+  
 
-  <div class="center col m6">
-      <div class="chan-form card-panel hoverable">
-          {{if eq .ChannelTxid ""}}
-          <h6 class="flow-text">{{ .NumCoins }} {{ if eq .Network "bitcoin" }} BTC {{else}} DCR {{end}} are available for channel creation. </h6>
-              <h6 class="flow-text">The faucet has {{ .NumChannels }} active {{if eq .NumChannels 1}} channel {{else}} channels {{end}} on the network. </h6>
-              <h6 class="flow-text">The max channel size is 10 DCR. </h6>
+  <div class="row justify-content-center pt-4">
 
-              {{ if eq .SubmissionError 8 }}
-                  <h6 class="flow-text red">Channel already open with node.</h6>
-              {{end}}
+    <div class="col-md-6 col-lg-4 pb-5 d-none d-md-block">
+      <img class="ln-logo" src="/static/images/lightningNetwork.svg" />
+    </div>
 
-              <br>
+    <div class="col-md-6">
 
-              <h6 class="center align flow-text">Channel Creation Parameters</h6>
 
-              <form method="post" action="/">
-                  <div class="row">
-                      <div class="input-field col s12">
-                          <input placeholder="<pubkey>"
-                             {{if eq .SubmissionError 1 2}}
-                                class="invalid"
-                             {{end}}
-                            id="node" name="node" type="text">
-                          <label for="node" data-error="{{ if eq .SubmissionError 1 2}}{{printf "%v" .SubmissionError}}{{end}}">
-                              Target Node
-                          </label>
-                      </div>
-                 </div>
+        {{if eq .ChannelTxid ""}}
+            <p>The Lightning Network Faucet will open a payment channel with the specified node. The node can then either use the channel to facilitate payments, or close the channel which will immediately credit the node on-chain.</p>
 
-                  <div class="row">
-                      <div class="input-field col s12">
-                          <input placeholder="0.001"
-                             {{if eq .SubmissionError 3 4 5}}
-                                class="invalid"
-                             {{end}}
-                             id="amt" name="amt" type="text">
+            <p><span style="font-weight:bold;">{{ printf "%.2f" .NumCoins }}&nbsp;DCR</span> are available for channel creation. Maximum channel size is <span style="font-weight:bold;">10&nbsp;DCR</span>.</p>
+            <p></p>
 
-                          <label for="amt" data-error="{{ if eq .SubmissionError 3 4 5}}{{printf "%v" .SubmissionError}}{{end}}">
-                              Channel Amount (in dcr)
-                          </label>
-                      </div>
-                 </div>
+            <form id="openChannelForm" method="post" action="/">
+                <div class="form-group">
+                        <label for="node">
+                            Node Public Key
+                        </label>
 
-                  <div class="row">
-                      <div class="input-field col s12">
-                          <input placeholder="0.0005"
-                             {{if eq .SubmissionError 6 7}}
-                                class="invalid"
-                             {{end}}
-                             id="bal" name="bal" type="text">
-                          <label for="bal" data-error="{{ if eq .SubmissionError 6 7}}{{printf "%v" .SubmissionError}}{{end}}">
-                              Initial Balance (in dcr)
-                          </label>
-                      </div>
-                 </div>
+                        <input class="form-control {{if eq .SubmissionError 1 2 7 8 9}}is-invalid{{end}}"
+                        {{if .FormFields }}value="{{.FormFields.Node}}"{{end}}
+                        id="node" name="node" type="text" required="true">
 
-                  </br>
+                        {{ if eq .SubmissionError 1 2 7 8 9}}
+                          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
+                        {{end}}
+                </div>
 
-                  <button class="btn-flat waves-effect waves-light" type="submit" name="action">Submit
-                    <i class="material-icons right">send</i>
-                  </button>
-              </form>
-          {{else}}
-              <span class="flow-text">Channel successfully created!</span> </br>
-              <span class="flow-text"> The broadcast funding transaction can be found
-                  <a href="https://testnet.dcrdata.org/tx/{{.ChannelTxid}}" target="_blank">
-                         here.
-                  </a>
-              </span> </br>
-	      <div id="progressMsg">
-                  <span class="flow-text"> After {{.NumConfs}} {{if eq .NumConfs 1}}block is{{else}}blocks are {{end}} found on testnet, your channel will open. </span>
-	          <span class="flow-text">Confirmations so far: <span id="confirmCount">0</span></span>
-	          <div class="progress" id="progressIndicator">
-                     <div class="indeterminate"></div>
-                  </div>
-	      </div>
-	      <div id="successMsg" style="display: none;">
-			<span class="flow-text">Target confirmation count reached!</span>
-	      </div>
+                <div class="form-group row">
+                    <div class="form-group col-md-6">
+                        <label for="amt">
+                            Channel Size&nbsp;(DCR)
+                        </label>
 
-		  <script>
-			  function checkTxResponse(resp) {
-				  console.log("got response from dcrdata: ", resp);
-				  $("#confirmCount").text(resp.confirmations);
-				  var targetConfirmations = {{.NumConfs}};
-				  if (resp.confirmations >= targetConfirmations) {
-					$("#progressMsg").hide();
-					$("#successMsg").removeAttr("style");
-				  } else {
-					setTimeout(checkTxMined, 1000*60);
-				  }
-			  }
-			  function checkTxMined() {
-				  var txid = "{{.ChannelTxid}}";
-				  $.get("https://testnet.dcrdata.org/api/tx/"+txid, checkTxResponse)
-			  }
-			  setTimeout(checkTxMined, 10000);
-		  </script>
-          {{end}}
+                        <input class="form-control {{if eq .SubmissionError 3 4 5}}is-invalid{{end}}"
+                        {{if .FormFields.Amt }}value="{{.FormFields.Amt}}"{{else}}value="0.001"{{end}}
+                        id="amt" name="amt" type="text" required="true">
+
+                        {{ if eq .SubmissionError 3 4 5}}
+                          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
+                        {{end}}
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="bal">
+                            Initial Balance&nbsp;(DCR)
+                        </label>
+                        <input class="form-control {{if eq .SubmissionError 6 }}is-invalid{{end}}"
+                        {{if .FormFields.Bal }}value="{{.FormFields.Bal}}"{{else}}value="0.0005"{{end}}
+                        id="bal" name="bal" type="text" required="true">
+
+                        {{ if eq .SubmissionError 6 }}
+                          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <div class="form-group row justify-content-center">
+                  <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4" type="submit" name="action">Create Channel</button>
+                </div>
+
+                <script>
+                  (function() {
+                    $("input").change(function() {
+                      $(this).removeClass("is-invalid");
+                    });
+                  })();
+                </script>
+
+            </form>
+
+        {{else}}
+            <h4>Channel successfully created</h4>
+            <p class="flow-text"> The broadcast funding transaction can be found
+                <a href="https://testnet.dcrdata.org/tx/{{.ChannelTxid}}" target="_blank">
+                        here.
+                </a>
+            </p>
+
+            <div id="progressMsg">
+                <p class="flow-text"> After {{.NumConfs}} {{if eq .NumConfs 1}}block is{{else}}blocks are {{end}} found your channel will open. </p>
+                <p class="flow-text">Blocks found so far: <span id="confirmCount">0</span> / {{.NumConfs}}</p>
+                <div class="progress rounded-pill">
+                  <div class="progress-bar rounded-pill progress-bar-striped progress-bar-animated" role="progressbar" style="width: 3%"></div>
+                </div>
+            </div>
+
+            <div id="successMsg" style="display: none;">
+              <h4>Target confirmation count reached</h4>
+              <p>Your channel is now active.</p>
+            </div>
+
+            <script>
+              function checkTxResponse(resp) {
+                console.log("got response from dcrdata: ", resp);
+                $("#confirmCount").text(resp.confirmations);
+                var targetConfirmations = {{.NumConfs}};
+                if (resp.confirmations >= targetConfirmations) {
+                  $("#progressMsg").hide();
+                  $("#successMsg").removeAttr("style");
+                } else {
+                  var barWidth = 100*(resp.confirmations/targetConfirmations);
+                  if (barWidth < 3) {
+                    barWidth = 3;
+                  } else if (barWidth > 100) {
+                    barWidth = 100;
+                  }
+                  $("#progressMsg .progress-bar").width(barWidth + "%");
+                  setTimeout(checkTxMined, 10*1000);
+                }
+              }
+              function checkTxMined() {
+                var txid = "{{.ChannelTxid}}";
+                $.get("https://testnet.dcrdata.org/api/tx/"+txid, checkTxResponse)
+              }
+              setTimeout(checkTxMined, 10*1000);
+            </script>
+        {{end}}
+    </div>
+
+  </div>
+</div> 
+
+{{if eq .ChannelTxid ""}}
+  <div class="content mb-3 p-4">
+    {{ if gt (len $.PendingChannels) 0 }}
+      <h2>Pending Channels ({{len $.PendingChannels}})</h2>
+      {{range .PendingChannels}}
+      <div class="channel d-inline-block p-2">
+        <span style="font-weight:bold;">RemoteNodePub:</span> {{.Channel.RemoteNodePub}} <br />
+        <span style="font-weight:bold;">Capacity:</span> {{.Channel.Capacity}} <br />
+        <span style="font-weight:bold;">LocalBalance:</span> {{.Channel.LocalBalance}} <br />
+        <span style="font-weight:bold;">RemoteBalance:</span> {{.Channel.RemoteBalance}} <br />
       </div>
+      {{end}}
+    {{else}}
+      <h2>Pending Channels</h2>
+      <p>Faucet has no pending channels</p>
+    {{end}}
   </div>
 
-  <div class="col m3"> </div>
+  <div class="content p-4">
+    {{ if gt (len $.ActiveChannels) 0 }}
+      <h2>Active Channels ({{len $.ActiveChannels}})</h2>
+      {{range .ActiveChannels}}
+        <div class="channel d-inline-block p-2">
+          <span style="font-weight:bold;">RemotePubkey:</span> {{.RemotePubkey}} <br />
+          <span style="font-weight:bold;">Capacity:</span> {{.Capacity}} <br />
+          <span style="font-weight:bold;">LocalBalance:</span> {{.LocalBalance}} <br />
+          <span style="font-weight:bold;">RemoteBalance:</span> {{.RemoteBalance}} <br />
+          <span style="font-weight:bold;">UnsettledBalance:</span> {{.UnsettledBalance}} <br />
+          <span style="font-weight:bold;">TotalAtomsSent:</span> {{.TotalAtomsSent}} <br />
+          <span style="font-weight:bold;">TotalAtomsReceived:</span> {{.TotalAtomsReceived}} <br />
+        </div>
+      {{end}}
+    {{else}}
+      <h2>Active Channels</h2>
+      <p>Faucet has no active channels</p>
+    {{end}}
 
+  </div>
+{{end}}
+
+<div class="pb-4">
 </div>
 
-{{template "footer"}}
+{{template "footer" .}}
