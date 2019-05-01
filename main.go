@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"flag"
 	"html/template"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -95,6 +94,9 @@ const (
 )
 
 func main() {
+	initLogRotator(defaultLogPath)
+	setLogLevels(defaultLogLevel)
+
 	flag.Parse()
 
 	// Pre-compile the list of templates so we'll catch any error sin the
@@ -106,7 +108,8 @@ func main() {
 	// With the templates loaded, create the faucet itself.
 	faucet, err := newLightningFaucet(*lndNodes, faucetTemplates, *network)
 	if err != nil {
-		log.Fatalf("unable to create faucet: %v", err)
+		log.Criticalf("unable to create faucet: %v", err)
+		os.Exit(1)
 		return
 	}
 
@@ -114,9 +117,10 @@ func main() {
 	// the faucet's channels by any means and exit in the case of a success
 	// or failure.
 	if *wipeChannels {
-		log.Println("Attempting to wipe all faucet channels")
+		log.Info("Attempting to wipe all faucet channels")
 		if err := faucet.CloseAllChannels(); err != nil {
-			log.Fatalf("unable to close all the faucet's channels: %v", err)
+			log.Criticalf("unable to close all the faucet's channels: %v", err)
+			os.Exit(1)
 			return
 		}
 
@@ -145,7 +149,7 @@ func main() {
 	http.Handle("/", r)
 
 	if !*useLeHTTPS {
-		log.Printf("Listening on %s", *bindAddr)
+		log.Infof("Listening on %s", *bindAddr)
 		go http.ListenAndServe(*bindAddr, r)
 	} else {
 		// Create a directory cache so the certs we get from Let's
@@ -163,7 +167,7 @@ func main() {
 
 		// As we'd like all requests to default to https, redirect all regular
 		// http requests to the https version of the faucet.
-		log.Printf("Listening on %s", *bindAddr)
+		log.Infof("Listening on %s", *bindAddr)
 		go http.ListenAndServe(*bindAddr, m.HTTPHandler(nil))
 
 		// Finally, create the http server, passing in our TLS configuration.
@@ -175,7 +179,8 @@ func main() {
 			TLSConfig:    &tls.Config{GetCertificate: m.GetCertificate},
 		}
 		if err := httpServer.ListenAndServeTLS("", ""); err != nil {
-			log.Fatal(err)
+			log.Critical(err)
+			os.Exit(1)
 		}
 	}
 

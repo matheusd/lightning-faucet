@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -46,6 +45,14 @@ var (
 		lndHomeDir, "data", "chain", "decred", "testnet",
 		defaultMacaroonFilename,
 	)
+
+	lndFaucetHomeDir   = dcrutil.AppDataDir("dcrlnfaucet", false)
+	defaultLogFilename = "dcrlnfaucet.log"
+	defaultLogPath     = filepath.Join(
+		lndFaucetHomeDir, "logs", "decred", "testnet",
+		defaultLogFilename,
+	)
+	defaultLogLevel = "info"
 )
 
 // chanCreationError is an enum which describes the exact nature of an error
@@ -204,7 +211,7 @@ func (l *lightningFaucet) Start() {
 //
 // NOTE: This MUST be run as a goroutine.
 func (l *lightningFaucet) zombieChanSweeper() {
-	log.Println("zombie chan sweeper active")
+	log.Info("zombie chan sweeper active")
 
 	// Any channel peer that hasn't been online in more than 48 hours past
 	// from now will have their channels closed out.
@@ -218,7 +225,7 @@ func (l *lightningFaucet) zombieChanSweeper() {
 	// any zombies channels.
 	zombieTicker := time.NewTicker(time.Hour * 1)
 	for _ = range zombieTicker.C {
-		log.Println("Performing zombie channel sweep!")
+		log.Info("Performing zombie channel sweep!")
 
 		// In order to ensure we close out the proper channels, we also
 		// calculate the 48 hour offset from the point of our next
@@ -266,7 +273,7 @@ func (l *lightningFaucet) sweepZombieChans(timeCutOff time.Time) {
 	openChanReq := &lnrpc.ListChannelsRequest{}
 	openChannels, err := l.lnd.ListChannels(ctxb, openChanReq)
 	if err != nil {
-		log.Printf("unable to fetch open channels: %v", err)
+		log.Errorf("unable to fetch open channels: %v", err)
 		return
 	}
 
@@ -278,7 +285,7 @@ func (l *lightningFaucet) sweepZombieChans(timeCutOff time.Time) {
 				PubKey: channel.RemotePubkey,
 			})
 		if err != nil {
-			log.Printf("unable to get node pubkey: %v", err)
+			log.Errorf("unable to get node pubkey: %v", err)
 			continue
 		}
 
@@ -289,21 +296,21 @@ func (l *lightningFaucet) sweepZombieChans(timeCutOff time.Time) {
 		// time cutoff, and the peer isn't currently online, then we'll
 		// force close out the channel.
 		if lastSeen.Before(timeCutOff) && !channel.Active {
-			log.Printf("ChannelPoint(%v) is a zombie, last seen: %v",
+			log.Infof("ChannelPoint(%v) is a zombie, last seen: %v",
 				channel.ChannelPoint, lastSeen)
 
 			chanPoint, err := strPointToChanPoint(channel.ChannelPoint)
 			if err != nil {
-				log.Printf("unable to get chan point: %v", err)
+				log.Errorf("unable to get chan point: %v", err)
 				continue
 			}
 			txid, err := l.closeChannel(chanPoint, true)
 			if err != nil {
-				log.Printf("unable to close zombie chan: %v", err)
+				log.Errorf("unable to close zombie chan: %v", err)
 				continue
 			}
 
-			log.Printf("closed zombie chan, txid: %v", txid)
+			log.Infof("closed zombie chan, txid: %v", txid)
 		}
 	}
 }
@@ -319,7 +326,7 @@ func (l *lightningFaucet) closeChannel(chanPoint *lnrpc.ChannelPoint,
 	}
 	stream, err := l.lnd.CloseChannel(ctxb, closeReq)
 	if err != nil {
-		log.Printf("unable to start channel close: %v", err)
+		log.Errorf("unable to start channel close: %v", err)
 	}
 
 	// Consume the first response which'll be sent once the closing
@@ -392,21 +399,21 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 	infoReq := &lnrpc.GetInfoRequest{}
 	nodeInfo, err := l.lnd.GetInfo(ctxb, infoReq)
 	if err != nil {
-		log.Printf("rpc GetInfoRequest failed: %v", err)
+		log.Errorf("rpc GetInfoRequest failed: %v", err)
 		return nil, err
 	}
 
 	activeChanReq := &lnrpc.ListChannelsRequest{}
 	activeChannels, err := l.lnd.ListChannels(ctxb, activeChanReq)
 	if err != nil {
-		log.Printf("rpc ListChannels failed: %v", err)
+		log.Errorf("rpc ListChannels failed: %v", err)
 		return nil, err
 	}
 
 	pendingChanReq := &lnrpc.PendingChannelsRequest{}
 	pendingChannels, err := l.lnd.PendingChannels(ctxb, pendingChanReq)
 	if err != nil {
-		log.Printf("rpc PendingChannels failed: %v", err)
+		log.Errorf("rpc PendingChannels failed: %v", err)
 		return nil, err
 	}
 
@@ -415,7 +422,7 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 	balReq := &lnrpc.WalletBalanceRequest{}
 	walletBalance, err := l.lnd.WalletBalance(ctxb, balReq)
 	if err != nil {
-		log.Printf("rpc WalletBalance failed: %v", err)
+		log.Errorf("rpc WalletBalance failed: %v", err)
 		return nil, err
 	}
 
@@ -429,7 +436,7 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 
 	nodeAddr := ""
 	if len(nodeInfo.Uris) == 0 {
-		log.Println("warning: nodeInfo did not include a URI. external_ip config of dcrlnd is probably not set")
+		log.Warn("nodeInfo did not include a URI. external_ip config of dcrlnd is probably not set")
 	} else {
 		nodeAddr = nodeInfo.Uris[0]
 	}
@@ -461,7 +468,7 @@ func (l *lightningFaucet) faucetHome(w http.ResponseWriter, r *http.Request) {
 	// the most up to date state.
 	homeInfo, err := l.fetchHomeState()
 	if err != nil {
-		log.Println("unable to fetch home state")
+		log.Error("unable to fetch home state")
 		http.Error(w, "unable to render home page", http.StatusInternalServerError)
 		return
 	}
@@ -645,12 +652,12 @@ func (l *lightningFaucet) openChannel(homeTemplate *template.Template,
 		LocalFundingAmount: chanSize,
 		PushAtoms:          pushAmt,
 	}
-	log.Printf("attempting to create channel with params: %v",
+	log.Infof("attempting to create channel with params: %v",
 		spew.Sdump(openChanReq))
 
 	openChanStream, err := l.lnd.OpenChannel(ctxb, openChanReq)
 	if err != nil {
-		log.Printf("Opening channel stream failed: %v", err)
+		log.Errorf("Opening channel stream failed: %v", err)
 		homeState.SubmissionError = ChannelOpenFail
 		homeTemplate.Execute(w, homeState)
 		return
@@ -660,7 +667,7 @@ func (l *lightningFaucet) openChannel(homeTemplate *template.Template,
 	// indicates that the channel has been broadcast to the network.
 	chanUpdate, err := openChanStream.Recv()
 	if err != nil {
-		log.Printf("Channel update failed: %v", err)
+		log.Errorf("Channel update failed: %v", err)
 		homeState.SubmissionError = ChannelOpenFail
 		homeTemplate.Execute(w, homeState)
 		return
@@ -669,11 +676,11 @@ func (l *lightningFaucet) openChannel(homeTemplate *template.Template,
 	pendingUpdate := chanUpdate.Update.(*lnrpc.OpenStatusUpdate_ChanPending).ChanPending
 	fundingTXID, _ := chainhash.NewHash(pendingUpdate.Txid)
 
-	log.Printf("channel created with txid: %v", fundingTXID)
+	log.Infof("channel created with txid: %v", fundingTXID)
 
 	homeState.ChannelTxid = fundingTXID.String()
 	if err := homeTemplate.Execute(w, homeState); err != nil {
-		log.Printf("unable to render home page: %v", err)
+		log.Errorf("unable to render home page: %v", err)
 	}
 }
 
@@ -689,26 +696,26 @@ func (l *lightningFaucet) CloseAllChannels() error {
 	}
 
 	for _, channel := range openChannels.Channels {
-		log.Printf("Attempting to close channel: %s", channel.ChannelPoint)
+		log.Infof("Attempting to close channel: %s", channel.ChannelPoint)
 
 		chanPoint, err := strPointToChanPoint(channel.ChannelPoint)
 		if err != nil {
-			log.Printf("unable to get chan point: %v", err)
+			log.Errorf("unable to get chan point: %v", err)
 			continue
 		}
 
 		forceClose := !channel.Active
 		if forceClose {
-			log.Println("Attempting force close")
+			log.Info("Attempting force close")
 		}
 
 		closeTxid, err := l.closeChannel(chanPoint, forceClose)
 		if err != nil {
-			log.Printf("unable to close channel: %v", err)
+			log.Errorf("unable to close channel: %v", err)
 			continue
 		}
 
-		log.Printf("closing txid: %v", closeTxid)
+		log.Infof("closing txid: %v", closeTxid)
 	}
 
 	return nil
