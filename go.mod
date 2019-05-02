@@ -12,6 +12,7 @@ require (
 	github.com/golang/crypto v0.0.0-20180904163835-0709b304e793
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
+	github.com/jessevdk/go-flags v1.4.0
 	github.com/jrick/logrotate v1.0.0
 	google.golang.org/grpc v1.18.0
 	gopkg.in/macaroon.v2 v2.0.0

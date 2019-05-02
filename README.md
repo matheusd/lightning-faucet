@@ -9,7 +9,7 @@ Decred testnet. The following faucets are currently available:
 - https://testnet-dcrln-01.matheusd.com
 - https://testnet-dcrln-01.davec.name
 
-The Testnet Lightning Faucet (TLF) is similar to other existing Decred 
+The Testnet Lightning Faucet (TLF) is similar to other existing Decred
 faucets.  However, rather then sending dcr directly on-chain to a user of
 the faucet, the TLF will instead open a payment channel with the target user.
 The user can then either use their new link to the Lightning Network to
@@ -19,16 +19,18 @@ credits them on-chain like regular faucets).
 Currently the TLF is only compatible with `dcrlnd`.
 
 ## Installation
-  In order to build from source, the following build dependencies are 
-  required:
-  
-  * **Go:** Installation instructions can be found [here](http://golang.org/doc/install). 
 
-  Minimum Go version supported is 1.11. This project uses go modules, so either
-  compile it with GO111MODULES=on or outside of the $GOPATH.
+In order to build from source, the following build dependencies are
+required:
+
+* **Go:** Installation instructions can be found [here](http://golang.org/doc/install).
+
+Minimum Go version supported is 1.11. This project uses go modules, so either
+compile it with GO111MODULES=on or outside of the $GOPATH.
 
 With the preliminary steps completed, to install the Testnet Lightning Faucet
-```
+
+```no-highlight
 $ git clone https://github.com/decred/lightning-faucet src/github.com/decred/lightning-faucet
 $ cd src/github.com/decred/lightning-faucet
 $ go install -v
@@ -41,16 +43,16 @@ Once you have the faucet installed, you'll need to ensure you have a local
 
 Once the node is synced, execute the following command (from this directory) to
 deploy the faucet:
-```
-lightning-faucet --lnd_ip=X.X.X.X
+
+```no-highlight
+lightning-faucet --lnd_node=X.X.X.X:10009
 ```
 
-Where `X.X.X.X` is the public, reachable IP address for your active `dcrlnd` node.
+Where `X.X.X.X:10009` is the IP address and port for your active `dcrlnd` node.
 
-To enable HTTPS support via [Let's Encrypt](https://letsencrypt.org), specify 
+To enable HTTPS support via [Let's Encrypt](https://letsencrypt.org), specify
 a few additional options:
 
+```no-highlight
+lightning-faucet -lnd_node=X.X.X.X:10009 -use_le_https -domain my-faucet-domain.example.com
 ```
-lightning-faucet -lnd_ip=X.X.X.X -use_le_https -domain my-faucet-domain.example.com
-```
-

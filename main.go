@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"flag"
 	"html/template"
 	"net/http"
 	"os"
@@ -15,51 +14,6 @@ import (
 	"github.com/golang/crypto/acme/autocert"
 
 	"github.com/gorilla/mux"
-)
-
-var (
-	// netParams is the Decred network that the faucet is operating on.
-	netParams = flag.String("net", "testnet", "decred network to operate on")
-
-	// lndNodes is a list of lnd nodes that the faucet should connect out
-	// to.
-	//
-	// TODO(roasbeef): channels should be balanced in a round-robin manner
-	// between all available lnd nodes.
-	lndNodes = flag.String("nodes", "localhost:10009", "comma separated "+
-		"list of host:port")
-
-	// lndIP is the IP address that should be advertised on the home page.
-	// Users can connect out to this address in order to sync up their
-	// graph state.
-	lndIP = flag.String("lnd_ip", "10.0.0.9", "the public IP address of "+
-		"the faucet's node")
-
-	// bindAddr is the port that the http server should listen on.
-	bindAddr = flag.String("bind_addr", ":80", "port to listen for http")
-
-	// useLeHTTPS indicates whether we should bind to the https port and
-	// use the lets encrypt service to get a certificate for it.
-	useLeHTTPS = flag.Bool("use_le_https", false, "use https via lets encrypt")
-
-	// wipeChannels is a bool that indicates if all channels should be
-	// closed (either cooperatively or forcibly) on startup. If all
-	// channels are able to be closed, then the binary will exit upon
-	// success.
-	wipeChannels = flag.Bool("wipe_chans", false, "close all faucet"+
-		"channels and exit")
-
-	// domain is the target which will resolve to the IP address of the
-	// machine running the faucet. Setting this parameter properly is
-	// required in order for the free Let's Encrypt TSL certificate to
-	// work.
-	domain = flag.String("domain", "faucet.lightning.community", "the "+
-		"domain of the faucet, required for TLS")
-
-	// network is the network the faucet is running on. This value must
-	// either be "litecoin" or "bitcoin".
-	network = flag.String("network", "decred", "the network of the "+
-		"faucet")
 )
 
 // equal reports whether the first argument is equal to any of the remaining
@@ -94,19 +48,21 @@ const (
 )
 
 func main() {
-	initLogRotator(defaultLogPath)
-	setLogLevels(defaultLogLevel)
+	// Load configuration and parse command line.  This function also
+	// initializes logging and configures it accordingly.
+	cfg, _, err := loadConfig()
+	if err != nil {
+		return
+	}
 
-	flag.Parse()
-
-	// Pre-compile the list of templates so we'll catch any error sin the
+	// Pre-compile the list of templates so we'll catch any errors in the
 	// templates as soon as the binary is run.
 	faucetTemplates := template.Must(template.New("faucet").
 		Funcs(customFuncs).
 		ParseGlob(templateGlobPattern))
 
 	// With the templates loaded, create the faucet itself.
-	faucet, err := newLightningFaucet(*lndNodes, faucetTemplates, *network)
+	faucet, err := newLightningFaucet(cfg.LndNode, faucetTemplates)
 	if err != nil {
 		log.Criticalf("unable to create faucet: %v", err)
 		os.Exit(1)
@@ -116,7 +72,7 @@ func main() {
 	// If the wipe channels bool is set, then we'll attempt to close ALL
 	// the faucet's channels by any means and exit in the case of a success
 	// or failure.
-	if *wipeChannels {
+	if cfg.WipeChannels {
 		log.Info("Attempting to wipe all faucet channels")
 		if err := faucet.CloseAllChannels(); err != nil {
 			log.Criticalf("unable to close all the faucet's channels: %v", err)
@@ -148,9 +104,9 @@ func main() {
 	// the global http handler.
 	http.Handle("/", r)
 
-	if !*useLeHTTPS {
-		log.Infof("Listening on %s", *bindAddr)
-		go http.ListenAndServe(*bindAddr, r)
+	if !cfg.UseLeHTTPS {
+		log.Infof("Listening on %s", cfg.BindAddr)
+		go http.ListenAndServe(cfg.BindAddr, r)
 	} else {
 		// Create a directory cache so the certs we get from Let's
 		// Encrypt are cached locally. This avoids running into their
@@ -162,13 +118,13 @@ func main() {
 		m := autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			Cache:      certCache,
-			HostPolicy: autocert.HostWhitelist(*domain),
+			HostPolicy: autocert.HostWhitelist(cfg.Domain),
 		}
 
 		// As we'd like all requests to default to https, redirect all regular
 		// http requests to the https version of the faucet.
-		log.Infof("Listening on %s", *bindAddr)
-		go http.ListenAndServe(*bindAddr, m.HTTPHandler(nil))
+		log.Infof("Listening on %s", cfg.BindAddr)
+		go http.ListenAndServe(cfg.BindAddr, m.HTTPHandler(nil))
 
 		// Finally, create the http server, passing in our TLS configuration.
 		httpServer := &http.Server{

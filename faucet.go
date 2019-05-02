@@ -35,26 +35,6 @@ const (
 	minChannelSize int64 = 50000
 )
 
-var (
-	lndHomeDir             = dcrutil.AppDataDir("dcrlnd", false)
-	defaultTLSCertFilename = "tls.cert"
-	tlsCertPath            = filepath.Join(lndHomeDir, defaultTLSCertFilename)
-
-	defaultMacaroonFilename = "admin.macaroon"
-	defaultMacaroonPath     = filepath.Join(
-		lndHomeDir, "data", "chain", "decred", "testnet",
-		defaultMacaroonFilename,
-	)
-
-	lndFaucetHomeDir   = dcrutil.AppDataDir("dcrlnfaucet", false)
-	defaultLogFilename = "dcrlnfaucet.log"
-	defaultLogPath     = filepath.Join(
-		lndFaucetHomeDir, "logs", "decred", "testnet",
-		defaultLogFilename,
-	)
-	defaultLogLevel = "info"
-)
-
 // chanCreationError is an enum which describes the exact nature of an error
 // encountered when a user attempts to create a channel with the faucet. This
 // enum is used within the templates to determine at which input item the error
@@ -146,16 +126,14 @@ type lightningFaucet struct {
 
 	templates *template.Template
 
-	network string
-
 	openChanMtx  sync.RWMutex
 	openChannels map[wire.OutPoint]time.Time
 }
 
 // newLightningFaucet creates a new channel faucet that's bound to a cluster of
 // lnd nodes, and uses the passed templates to render the web page.
-func newLightningFaucet(lndHost string,
-	templates *template.Template, network string) (*lightningFaucet, error) {
+func newLightningFaucet(lndNode string,
+	templates *template.Template) (*lightningFaucet, error) {
 
 	// First attempt to establish a connection to lnd's RPC sever.
 	creds, err := credentials.NewClientTLSFromFile(tlsCertPath, "")
@@ -181,7 +159,7 @@ func newLightningFaucet(lndHost string,
 		grpc.WithPerRPCCredentials(macaroons.NewMacaroonCredential(mac)),
 	)
 
-	conn, err := grpc.Dial(*lndNodes, opts...)
+	conn, err := grpc.Dial(lndNode, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial to lnd's gRPC server: %v", err)
 	}
@@ -193,7 +171,6 @@ func newLightningFaucet(lndHost string,
 	return &lightningFaucet{
 		lnd:       lnd,
 		templates: templates,
-		network:   network,
 	}, nil
 }
 
@@ -377,9 +354,6 @@ type homePageContext struct {
 	// open up.
 	NumConfs uint32
 
-	// Network is the network the faucet is running on.
-	Network string
-
 	// FormFields contains the values which were submitted through the form.
 	FormFields map[string]string
 
@@ -446,7 +420,6 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 		GitCommitHash:   strings.Replace(string(gitHash), "'", "", -1),
 		NodeAddr:        nodeAddr,
 		NumConfs:        3,
-		Network:         l.network,
 		FormFields:      make(map[string]string),
 		ActiveChannels:  activeChannels.Channels,
 		PendingChannels: pendingChannels.PendingOpenChannels,

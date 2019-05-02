@@ -32,3 +32,4 @@ vendor/
 *.idea
 debug
 .vscode
+main
