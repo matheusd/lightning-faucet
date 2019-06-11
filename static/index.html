@@ -11,7 +11,6 @@
   <div class="row d-flex justify-content-center">
     <h1 id="title" class="flow-text">Lightning Network Faucet</h1>
   </div>
-  
 
   <div class="row justify-content-center pt-4">
 
@@ -21,14 +20,13 @@
 
     <div class="col-md-6">
 
-
         {{if eq .ChannelTxid ""}}
             <p>The Lightning Network Faucet will open a payment channel with the specified node. The node can then either use the channel to facilitate payments, or close the channel which will immediately credit the node on-chain.</p>
 
             <p><span style="font-weight:bold;">{{ printf "%.2f" .NumCoins }}&nbsp;DCR</span> are available for channel creation. Maximum channel size is <span style="font-weight:bold;">10&nbsp;DCR</span>.</p>
             <p></p>
 
-            <form id="openChannelForm" method="post" action="/">
+            <form id="openChannelForm" method="post" action="/?action=0">
                 <div class="form-group">
                         <label for="node">
                             Node Public Key
@@ -73,7 +71,8 @@
                 </div>
                 
                 <div class="form-group row justify-content-center">
-                  <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4" type="submit" name="action">Create Channel</button>
+                  <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4"
+                    type="submit" name="action">Generate Invoice</button>
                 </div>
 
                 <script>
@@ -136,7 +135,59 @@
     </div>
 
   </div>
-</div> 
+</div>
+
+<div class="content mb-3 p-4">
+  <h2>Generate Invoice</h2>
+  <form id="generateInvoiceForm" method="post" action="/?action=1">
+      <div class="form-group">
+        <label for="node">
+          Invoice Amount
+        </label>
+
+        <input class="form-control {{if eq .SubmissionError 3 10 }}is-invalid{{end}}"
+        {{if .FormFields }}value="{{.FormFields.Amt}}"{{end}}
+        id="amt" name="amt" type="number" required="true">
+
+        {{ if eq .SubmissionError 3 }}
+          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
+        {{end}}
+
+        {{ if eq .SubmissionError 10 }}
+          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
+        {{end}}
+      </div>
+
+      <div class="form-group">
+        <label for="node">
+          Description
+        </label>
+        <input class="form-control" {{if .FormFields }}value="{{.FormFields.Description}}"{{end}}
+        id="description" name="description" type="text">
+      </div>
+
+      {{ if .InvoicePaymentRequest}}
+        <div class="form-group" >
+          <h4>Invoice successfully generated</h4>
+          <div class="content p-4" style="word-break: break-all">
+            <p>{{ .InvoicePaymentRequest }}</p>
+          </div>
+        </div>
+      {{ end }}
+
+      <div class="form-group row justify-content-center">
+        <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4" type="submit">Generate Invoice</button>
+      </div>
+
+      <script>
+        (function() {
+          $("input").change(function() {
+            $(this).removeClass("is-invalid");
+          });
+        })();
+      </script>
+  </form>
+</div>
 
 {{if eq .ChannelTxid ""}}
   <div class="content mb-3 p-4">

@@ -7,7 +7,7 @@ require (
 	github.com/decred/dcrd/chaincfg/chainhash v1.0.1
 	github.com/decred/dcrd/dcrutil v1.2.0
 	github.com/decred/dcrd/wire v1.2.0
-	github.com/decred/dcrlnd v0.2.1-alpha
+	github.com/decred/dcrlnd v0.1.1-0.20190528130025-71d9ffc3f0bf
 	github.com/decred/slog v1.0.0
 	github.com/golang/crypto v0.0.0-20180904163835-0709b304e793
 	github.com/gorilla/context v1.1.1 // indirect
@@ -22,11 +22,9 @@ replace (
 	github.com/decred/dcrd => github.com/decred/dcrd v0.0.0-20190306151227-8cbb5ae69df7
 	github.com/decred/dcrd/bech32 => github.com/decred/dcrd/bech32 v0.0.0-20190306151227-8cbb5ae69df7
 	github.com/decred/dcrd/blockchain => github.com/decred/dcrd/blockchain v0.0.0-20190306151227-8cbb5ae69df7
-	github.com/decred/dcrd/connmgr => github.com/matheusd/dcrd/connmgr v0.0.0-20190424131553-df36222d0b5d
 	github.com/decred/dcrd/dcrjson/v2 => github.com/decred/dcrd/dcrjson/v2 v2.0.0-20190306151227-8cbb5ae69df7
 	github.com/decred/dcrd/peer => github.com/decred/dcrd/peer v0.0.0-20190306151227-8cbb5ae69df7
 	github.com/decred/dcrd/rpcclient/v2 => github.com/decred/dcrd/rpcclient/v2 v2.0.0-20190306151227-8cbb5ae69df7
-	github.com/decred/dcrlnd => github.com/matheusd/dcrlnd v0.0.0-20190423164340-0f1927992ec2
 	github.com/decred/dcrlnd/macaroons => github.com/matheusd/dcrlnd/macaroons v0.0.0-20190423164340-0f1927992ec2
 
 	github.com/decred/dcrwallet => github.com/decred/dcrwallet v0.0.0-20190322135901-7e0e5a4227d7

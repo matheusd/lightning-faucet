@@ -40,6 +40,7 @@ github.com/decred/dcrd/chaincfg v1.3.0 h1:DEysyX1/kxlWbY97PTIPpGbMOp3+n2iixi3m9d
 github.com/decred/dcrd/chaincfg v1.3.0/go.mod h1:kpoGTMIriKn5hHRSu5b65+Q9LlGUdbQcMzGujac1BVs=
 github.com/decred/dcrd/chaincfg/chainhash v1.0.1 h1:0vG7U9+dSjSCaHQKdoSKURK2pOb47+b+8FK5q4+Je7M=
 github.com/decred/dcrd/chaincfg/chainhash v1.0.1/go.mod h1:OVfvaOsNLS/A1y4Eod0Ip/Lf8qga7VXCQjUQLbkY0Go=
+github.com/decred/dcrd/connmgr v1.0.2/go.mod h1:jBNfQLh+454n3crgNCPrhMgZ9mVvYcMbWSCEAHsJQus=
 github.com/decred/dcrd/database v1.0.1/go.mod h1:ILCeyOHFew3fZ7K2B9jl+tp5qFOap/pEGoo6Yy6Wk0g=
 github.com/decred/dcrd/database v1.0.3 h1:e5Q3gDt9LwfvpZxYqFF3OVzgr8bGeC1cen+V3mv/CCw=
 github.com/decred/dcrd/database v1.0.3/go.mod h1:TLxRwIV8x85+dxPTLAWu4mHg45TkKrrza5xzwOS1QtA=
@@ -89,6 +90,8 @@ github.com/decred/dcrd/txscript v1.0.2/go.mod h1:hmUOHFlOjU7H6T/czt6kurWwXJvGPGK
 github.com/decred/dcrd/wire v1.1.0/go.mod h1:/JKOsLInOJu6InN+/zH5AyCq3YDIOW/EqcffvU8fJHM=
 github.com/decred/dcrd/wire v1.2.0 h1:HqJVB7vcklIguzFWgRXw/WYCQ9cD3bUC5TKj53i1Hng=
 github.com/decred/dcrd/wire v1.2.0/go.mod h1:/JKOsLInOJu6InN+/zH5AyCq3YDIOW/EqcffvU8fJHM=
+github.com/decred/dcrlnd v0.1.1-0.20190528130025-71d9ffc3f0bf h1:Q/8RzVOTgRKHL6ROQrDAdvkuiam7Pr9ojgWLsHzJ7L4=
+github.com/decred/dcrlnd v0.1.1-0.20190528130025-71d9ffc3f0bf/go.mod h1:xEW7PWl798g5SyBo84n1hvyDUyOG8xWJXpW2yiSQXmE=
 github.com/decred/dcrwallet v0.0.0-20190322135901-7e0e5a4227d7 h1:6hITfNinCXoNhufVaMyuC2cG87GHdSICnE+iQiJYI6s=
 github.com/decred/dcrwallet v0.0.0-20190322135901-7e0e5a4227d7/go.mod h1:+vzDWHEei0sl7+UjyuHn9Ldmcro+SgL+f4PpoMPM+CY=
 github.com/decred/dcrwallet/chain/v2 v2.0.0 h1:6H2FrG9wd0PRXCWvsco7rvzBvklKn3tgT/zYkOl/3bU=
