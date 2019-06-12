@@ -26,7 +26,7 @@
             <p><span style="font-weight:bold;">{{ printf "%.2f" .NumCoins }}&nbsp;DCR</span> are available for channel creation. Maximum channel size is <span style="font-weight:bold;">10&nbsp;DCR</span>.</p>
             <p></p>
 
-            <form id="openChannelForm" method="post" action="/?action=0">
+            <form id="openChannelForm" method="post" action="/?action={{ .OpenChannelAction }}">
                 <div class="form-group">
                         <label for="node">
                             Node Public Key
@@ -71,8 +71,7 @@
                 </div>
                 
                 <div class="form-group row justify-content-center">
-                  <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4"
-                    type="submit" name="action">Generate Invoice</button>
+                  <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4" type="submit" name="action">Create Channel</button>
                 </div>
 
                 <script>
@@ -139,21 +138,17 @@
 
 <div class="content mb-3 p-4">
   <h2>Generate Invoice</h2>
-  <form id="generateInvoiceForm" method="post" action="/?action=1">
+  <form id="generateInvoiceForm" method="post" action="/?action={{ .GenerateInvoiceAction }}">
       <div class="form-group">
         <label for="node">
           Invoice Amount
         </label>
 
-        <input class="form-control {{if eq .SubmissionError 3 10 }}is-invalid{{end}}"
+        <input class="form-control {{if eq .SubmissionError 3 10 11 }}is-invalid{{end}}"
         {{if .FormFields }}value="{{.FormFields.Amt}}"{{end}}
         id="amt" name="amt" type="number" required="true">
 
-        {{ if eq .SubmissionError 3 }}
-          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
-        {{end}}
-
-        {{ if eq .SubmissionError 10 }}
+        {{ if eq .SubmissionError 3 10 11 }}
           <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
         {{end}}
       </div>
