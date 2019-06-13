@@ -141,14 +141,14 @@
   <form id="generateInvoiceForm" method="post" action="/?action={{ .GenerateInvoiceAction }}">
       <div class="form-group">
         <label for="node">
-          Invoice Amount
+		Invoice Amount (in DCR - maximum amount is <b>0.2</b>)
         </label>
 
-        <input class="form-control {{if eq .SubmissionError 3 10 11 }}is-invalid{{end}}"
+        <input class="form-control {{if eq .SubmissionError 3 10 11 12 }}is-invalid{{end}}"
         {{if .FormFields }}value="{{.FormFields.Amt}}"{{end}}
-        id="amt" name="amt" type="number" required="true">
+        id="amt" name="amt" type="number" required="true" placeholder="0.01" max="0.2" step="0.0001">
 
-        {{ if eq .SubmissionError 3 10 11 }}
+        {{ if eq .SubmissionError 3 10 11 12 }}
           <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
         {{end}}
       </div>
@@ -158,7 +158,7 @@
           Description
         </label>
         <input class="form-control" {{if .FormFields }}value="{{.FormFields.Description}}"{{end}}
-        id="description" name="description" type="text">
+        id="description" name="description" type="text" maxlength="255">
       </div>
 
       {{ if .InvoicePaymentRequest}}

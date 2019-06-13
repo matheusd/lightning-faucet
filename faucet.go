@@ -89,6 +89,13 @@ const (
 	// InvoiceTimeNotElapsed indicates minimum time to create a new invoice has not elapsed
 	InvoiceTimeNotElapsed
 
+	// InvoiceAmountTooHigh indicates the user tried to generate an invoice
+	// that was too expensive.
+	InvoiceAmountTooHigh
+)
+
+var (
+
 	// GenerateInvoiceTimeout represents the minimum time to generate a new
 	// invoice in seconds.
 	GenerateInvoiceTimeout = time.Duration(60) * time.Second
@@ -100,6 +107,8 @@ const (
 	OpenChannelAction = "openchannel"
 )
 
+// lastGeneratedInvoiceTime stores the last time an invoice generation was
+// attempted.
 var lastGeneratedInvoiceTime time.Time
 
 // String returns a human readable string describing the chanCreationError.
@@ -131,6 +140,8 @@ func (c chanCreationError) String() string {
 		return "Error generating Invoice"
 	case InvoiceTimeNotElapsed:
 		return "Please wait until you can generate a new invoice"
+	case InvoiceAmountTooHigh:
+		return "Invoice amount too high"
 	default:
 		return fmt.Sprintf("%v", uint8(c))
 	}
@@ -772,26 +783,36 @@ func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 		return
 	}
 
-	amtNumber, err := strconv.ParseInt(amt, 10, 64)
+	amtDcr, err := strconv.ParseFloat(amt, 64)
 	if err != nil {
 		homeState.SubmissionError = ChanAmountNotNumber
 		homeTemplate.Execute(w, homeState)
 		return
 	}
+	if amtDcr > 0.2 {
+		log.Warnf("Attempt to generate high value invoice (%f) from %s",
+			amtDcr, r.RemoteAddr)
+		homeState.SubmissionError = InvoiceAmountTooHigh
+		homeTemplate.Execute(w, homeState)
+		return
+	}
+	amtAtoms := int64(amtDcr * 1e8)
 
 	invoiceReq := &lnrpc.Invoice{
 		CreationDate: time.Now().Unix(),
-		Value:        amtNumber,
+		Value:        amtAtoms,
 		Memo:         description,
 	}
 	invoice, err := l.lnd.AddInvoice(ctxb, invoiceReq)
 	if err != nil {
 		log.Errorf("Generate invoice failed: %v", err)
 		homeState.SubmissionError = ErrorGeneratingInvoice
-		fmt.Printf("homestate:%+v\n\n", homeState)
 		homeTemplate.Execute(w, homeState)
 		return
 	}
+
+	log.Infof("Generated invoice #%d for %s rhash=%064x", invoice.AddIndex,
+		dcrutil.Amount(amtAtoms), invoice.RHash)
 
 	homeState.InvoicePaymentRequest = invoice.PaymentRequest
 
