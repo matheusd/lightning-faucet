@@ -1,4 +1,4 @@
-module github.com/decred/lightning-faucet/main
+module github.com/decred/lightning-faucet
 
 go 1.12
 
