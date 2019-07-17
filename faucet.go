@@ -777,7 +777,6 @@ func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 		homeTemplate.Execute(w, homeState)
 		return
 	}
-	lastGeneratedInvoiceTime = time.Now()
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "unable to parse form", 500)
 		return
@@ -811,6 +810,7 @@ func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 		return
 	}
 
+	lastGeneratedInvoiceTime = time.Now()
 	log.Infof("Generated invoice #%d for %s rhash=%064x", invoice.AddIndex,
 		dcrutil.Amount(amtAtoms), invoice.RHash)
 
