@@ -266,7 +266,7 @@ func strPointToChanPoint(stringPoint string) (*lnrpc.ChannelPoint, error) {
 
 	return &lnrpc.ChannelPoint{
 		FundingTxid: &lnrpc.ChannelPoint_FundingTxidBytes{
-			txid[:],
+			FundingTxidBytes: txid[:],
 		},
 		OutputIndex: uint32(index),
 	}, nil
@@ -460,7 +460,7 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 
 	return &homePageContext{
 		NumCoins:              dcrutil.Amount(walletBalance.ConfirmedBalance).ToCoin(),
-		GitCommitHash:         strings.Replace(string(gitHash), "'", "", -1),
+		GitCommitHash:         strings.Replace(gitHash, "'", "", -1),
 		NodeAddr:              nodeAddr,
 		NumConfs:              3,
 		FormFields:            make(map[string]string),
@@ -501,7 +501,7 @@ func (l *lightningFaucet) faucetHome(w http.ResponseWriter, r *http.Request) {
 	// form to open a channel, so we'll pass that off to the openChannel
 	// handler.
 	case r.Method == http.MethodPost:
-		action, _ := r.URL.Query()["action"]
+		action := r.URL.Query()["action"]
 
 		// action == 0 is to open channel, action == 1 is to generate
 		if action[0] == OpenChannelAction {
@@ -515,8 +515,6 @@ func (l *lightningFaucet) faucetHome(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "", http.StatusMethodNotAllowed)
 	}
-
-	return
 }
 
 func (l *lightningFaucet) pendingChannelExistsWithNode(nodePub string) bool {

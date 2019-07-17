@@ -20,11 +20,7 @@ import (
 // arguments. This function is used as a custom function within templates to do
 // richer equality tests.
 func equal(x, y interface{}) bool {
-	if reflect.DeepEqual(x, y) {
-		return true
-	}
-
-	return false
+	return reflect.DeepEqual(x, y)
 }
 
 var (
