@@ -235,7 +235,7 @@ func (l *lightningFaucet) zombieChanSweeper() {
 	// Every hour we'll consume a new tick and perform a sweep to close out
 	// any zombies channels.
 	zombieTicker := time.NewTicker(time.Hour * 1)
-	for _ = range zombieTicker.C {
+	for range zombieTicker.C {
 		log.Info("Performing zombie channel sweep!")
 
 		// In order to ensure we close out the proper channels, we also
@@ -363,7 +363,7 @@ func (l *lightningFaucet) closeChannel(chanPoint *lnrpc.ChannelPoint,
 // invalid channel submission, and finally a splash page upon successful
 // creation of a channel.
 type homePageContext struct {
-	// NumCoins is the number of coins in BTC that the faucet has available
+	// NumCoins is the number of coins in Decred that the faucet has available
 	// for channel creation.
 	NumCoins float64
 
