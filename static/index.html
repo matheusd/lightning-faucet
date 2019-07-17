@@ -146,7 +146,7 @@
 
         <input class="form-control {{if eq .SubmissionError 3 10 11 12 }}is-invalid{{end}}"
         {{if .FormFields }}value="{{.FormFields.Amt}}"{{end}}
-        id="amt" name="amt" type="number" required="true" placeholder="0.01" max="0.2" step="0.0001">
+        id="amt" name="amt" type="number" required="true" value="0.01" max="0.2" step="0.0001">
 
         {{ if eq .SubmissionError 3 10 11 12 }}
           <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
