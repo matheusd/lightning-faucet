@@ -23,10 +23,10 @@ const (
 )
 
 var (
-	lndHomeDir          = dcrutil.AppDataDir("dcrlnd", false)
-	tlsCertPath         = filepath.Join(lndHomeDir, defaultTLSCertFilename)
+	defaultLndDir       = dcrutil.AppDataDir("dcrlnd", false)
+	defaultTLSCertPath  = filepath.Join(defaultLndDir, defaultTLSCertFilename)
 	defaultMacaroonPath = filepath.Join(
-		lndHomeDir, "data", "chain", "decred", "testnet",
+		defaultLndDir, "data", "chain", "decred", "testnet",
 		defaultMacaroonFilename,
 	)
 	defaultDataDir = dcrutil.AppDataDir("dcrlnfaucet", false)
@@ -40,20 +40,45 @@ var (
 )
 
 type config struct {
+	ConfigFile   string `short:"C" long:"configfile" description:"Path to configuration file"`
+	LndDir       string `long:"lnddir" description:"The base directory that contains lnd's data, logs, configuration file, etc."`
 	LndNode      string `long:"lnd_node" description:"network address of dcrlnd RPC (host:port)"`
 	BindAddr     string `long:"bind_addr" description:"port to listen for http"`
 	UseLeHTTPS   bool   `long:"use_le_https" description:"use https via lets encrypt"`
 	WipeChannels bool   `long:"wipe_chans" description:"close all faucet channels and exit"`
 	Domain       string `long:"domain" description:"the domain of the faucet, required for TLS"`
+	MacaroonPath string `long:"macpath" description:"path to macaroons files"`
+	TLSCertPath  string `long:"tlscertpath" description:"Path to write the TLS certificate for lnd's RPC and REST services"`
+
+	// Network
+	MainNet bool `long:"mainnet" description:"Use the main network"`
+	TestNet bool `long:"testnet" description:"Use the test network"`
+	SimNet  bool `long:"simnet" description:"Use the simulation test network"`
+
+	// Invoice features
+	DisableGenerateInvoices bool `long:"disablegen" description:"disable generate invoice"`
+	DisablePayInvoices      bool `long:"disablepay" description:"disable invoice payment"`
+}
+
+// normalizeNetwork returns the common name of a network type used to create
+// file paths. This allows differently versioned networks to use the same path.
+func normalizeNetwork(network string) string {
+	if strings.HasPrefix(network, "testnet") {
+		return "testnet"
+	}
+
+	return network
 }
 
 func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
-		LndNode:      defaultLndNode,
+		LndDir:       defaultLndDir,
 		BindAddr:     defaultBindAddr,
 		UseLeHTTPS:   defaultUseLeHTTPS,
 		WipeChannels: defaultWipeChannels,
+		MacaroonPath: defaultMacaroonPath,
+		TLSCertPath:  defaultTLSCertPath,
 	}
 
 	// Pre-parse the command line options to see if an alternative config
@@ -74,11 +99,17 @@ func loadConfig() (*config, []string, error) {
 	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
 	usageMessage := fmt.Sprintf("Use %s -h to show usage", appName)
 
+	// If the config file path has not been modified by user, then
+	// we'll use the default config file path.
+	if preCfg.ConfigFile == "" {
+		preCfg.ConfigFile = defaultConfigFile
+	}
+
 	// Load additional config from file.
 	var configFileError error
 	parser := flags.NewParser(&cfg, flags.Default)
 
-	err = flags.NewIniParser(parser).ParseFile(defaultConfigFile)
+	err = flags.NewIniParser(parser).ParseFile(preCfg.ConfigFile)
 	if err != nil {
 		if _, ok := err.(*os.PathError); !ok {
 			fmt.Fprintf(os.Stderr, "Error parsing config "+
@@ -118,8 +149,39 @@ func loadConfig() (*config, []string, error) {
 		return nil, nil, err
 	}
 
+	// Multiple networks can't be selected simultaneously.  Count number of
+	// network flags passed and assign active network params.
+	numNets := 0
+	if cfg.MainNet {
+		numNets++
+		activeNetParams = &decredMainNetParams
+	}
+	if cfg.TestNet {
+		numNets++
+		activeNetParams = &decredTestNet3Params
+	}
+	if cfg.SimNet {
+		numNets++
+		activeNetParams = &decredSimNetParams
+	}
+	if numNets > 1 {
+		str := "%s: mainnet, testnet and simnet params can't be " +
+			"used together -- choose one of the three"
+		err := fmt.Errorf(str, funcName)
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, usageMessage)
+		return nil, nil, err
+	}
+
+	// If user didn't set the LndNode to connect to then use the default
+	// port for the active network (localhost:<default_port>).
+	if cfg.LndNode == "" {
+		cfg.LndNode = "localhost:" + activeNetParams.rpcPort
+	}
+
 	// Initialize log rotation.  After log rotation has been initialized, the
 	// logger variables may be used.
+	defaultLogPath = strings.Replace(defaultLogPath, "testnet", normalizeNetwork(activeNetParams.Name), 1)
 	initLogRotator(defaultLogPath)
 	setLogLevels(defaultLogLevel)
 

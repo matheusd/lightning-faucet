@@ -135,6 +135,7 @@
 
   </div>
 </div>
+{{ if not .DisableGenerateInvoices }}
 <div class="content mb-3 p-4">
   <h2>Generate Invoice</h2>
   <form id="generateInvoiceForm" method="post" action="/?action={{ .GenerateInvoiceAction }}">
@@ -182,7 +183,8 @@
       </script>
   </form>
 </div>
-
+{{end}}
+{{ if not .DisablePayInvoices }}
 <div class="content mb-3 p-4">
   <h2>Pay Invoice</h2>
   <form id="payInvoiceForm" method="post" action="/?action={{ .PayInvoiceAction }}">
@@ -231,7 +233,7 @@
       </script>
   </form>
 </div>
-
+{{end}}
 
 
 {{if eq .ChannelTxid ""}}

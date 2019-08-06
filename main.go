@@ -58,7 +58,7 @@ func main() {
 		ParseGlob(templateGlobPattern))
 
 	// With the templates loaded, create the faucet itself.
-	faucet, err := newLightningFaucet(cfg.LndNode, faucetTemplates)
+	faucet, err := newLightningFaucet(cfg, faucetTemplates)
 	if err != nil {
 		log.Criticalf("unable to create faucet: %v", err)
 		os.Exit(1)

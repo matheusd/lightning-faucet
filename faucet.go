@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -198,16 +199,44 @@ type lightningFaucet struct {
 
 	templates *template.Template
 
-	openChanMtx  sync.RWMutex
-	openChannels map[wire.OutPoint]time.Time
+	openChanMtx             sync.RWMutex
+	openChannels            map[wire.OutPoint]time.Time
+	disableGenerateInvoices bool
+	disablePayInvoices      bool
+}
+
+// cleanAndExpandPath expands environment variables and leading ~ in the
+// passed path, cleans the result, and returns it.
+func cleanAndExpandPath(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	// Expand initial ~ to OS specific home directory.
+	if strings.HasPrefix(path, "~") {
+		var homeDir string
+		user, err := user.Current()
+		if err == nil {
+			homeDir = user.HomeDir
+		} else {
+			homeDir = os.Getenv("HOME")
+		}
+
+		path = strings.Replace(path, "~", homeDir, 1)
+	}
+
+	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
+	// but the variables can still be expanded via POSIX-style $VARIABLE.
+	return filepath.Clean(os.ExpandEnv(path))
 }
 
 // newLightningFaucet creates a new channel faucet that's bound to a cluster of
 // lnd nodes, and uses the passed templates to render the web page.
-func newLightningFaucet(lndNode string,
+func newLightningFaucet(cfg *config,
 	templates *template.Template) (*lightningFaucet, error) {
 
 	// First attempt to establish a connection to lnd's RPC sever.
+	tlsCertPath := cleanAndExpandPath(cfg.TLSCertPath)
 	creds, err := credentials.NewClientTLSFromFile(tlsCertPath, "")
 	if err != nil {
 		return nil, fmt.Errorf("unable to read cert file: %v", err)
@@ -215,7 +244,7 @@ func newLightningFaucet(lndNode string,
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 
 	// Load the specified macaroon file.
-	macPath := cleanAndExpandPath(defaultMacaroonPath)
+	macPath := cleanAndExpandPath(cfg.MacaroonPath)
 	macBytes, err := ioutil.ReadFile(macPath)
 	if err != nil {
 		return nil, err
@@ -231,7 +260,7 @@ func newLightningFaucet(lndNode string,
 		grpc.WithPerRPCCredentials(macaroons.NewMacaroonCredential(mac)),
 	)
 
-	conn, err := grpc.Dial(lndNode, opts...)
+	conn, err := grpc.Dial(cfg.LndNode, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial to lnd's gRPC server: %v", err)
 	}
@@ -241,8 +270,10 @@ func newLightningFaucet(lndNode string,
 	lnd := lnrpc.NewLightningClient(conn)
 
 	return &lightningFaucet{
-		lnd:       lnd,
-		templates: templates,
+		lnd:                     lnd,
+		templates:               templates,
+		disableGenerateInvoices: cfg.DisableGenerateInvoices,
+		disablePayInvoices:      cfg.DisablePayInvoices,
 	}, nil
 }
 
@@ -450,6 +481,12 @@ type homePageContext struct {
 	// GenerateInvoiceAction indicates the form action to generate a new Invoice
 	GenerateInvoiceAction string
 
+	// Disable generate invoice form
+	DisableGenerateInvoices bool
+
+	// Disable invoices payment form
+	DisablePayInvoices bool
+
 	// Payment infos
 	PaymentDestination string
 	PaymentDescription string
@@ -511,16 +548,18 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 	}
 
 	return &homePageContext{
-		NumCoins:              dcrutil.Amount(walletBalance.ConfirmedBalance).ToCoin(),
-		GitCommitHash:         strings.Replace(gitHash, "'", "", -1),
-		NodeAddr:              nodeAddr,
-		NumConfs:              6,
-		FormFields:            make(map[string]string),
-		ActiveChannels:        activeChannels.Channels,
-		PendingChannels:       pendingChannels.PendingOpenChannels,
-		OpenChannelAction:     OpenChannelAction,
-		GenerateInvoiceAction: GenerateInvoiceAction,
-		PayInvoiceAction:      PayInvoiceAction,
+		NumCoins:                dcrutil.Amount(walletBalance.ConfirmedBalance).ToCoin(),
+		GitCommitHash:           strings.Replace(gitHash, "'", "", -1),
+		NodeAddr:                nodeAddr,
+		NumConfs:                6,
+		FormFields:              make(map[string]string),
+		ActiveChannels:          activeChannels.Channels,
+		PendingChannels:         pendingChannels.PendingOpenChannels,
+		OpenChannelAction:       OpenChannelAction,
+		GenerateInvoiceAction:   GenerateInvoiceAction,
+		PayInvoiceAction:        PayInvoiceAction,
+		DisableGenerateInvoices: l.disableGenerateInvoices,
+		DisablePayInvoices:      l.disablePayInvoices,
 	}, nil
 }
 
@@ -801,26 +840,18 @@ func (l *lightningFaucet) CloseAllChannels() error {
 	return nil
 }
 
-// cleanAndExpandPath expands environment variables and leading ~ in the passed
-// path, cleans the result, and returns it.
-// This function is taken from https://github.com/btcsuite/btcd
-func cleanAndExpandPath(path string) string {
-	// Expand initial ~ to OS specific home directory.
-	if strings.HasPrefix(path, "~") {
-		homeDir := filepath.Dir(lndHomeDir)
-		path = strings.Replace(path, "~", homeDir, 1)
-	}
-
-	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
-	// but the variables can still be expanded via POSIX-style $VARIABLE.
-	return filepath.Clean(os.ExpandEnv(path))
-}
-
 // generateInvoice is a hybrid http.Handler that handles: the validation of the
 // generate invoice form, rendering errors to the form, and finally generating
 // invoice if all the parameters check out.
 func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 	homeState *homePageContext, w http.ResponseWriter, r *http.Request) {
+
+	// Disable generate invoice if user set this parameter
+	if l.disableGenerateInvoices {
+		http.Error(w, "generate invoices was disabled", 403)
+		return
+	}
+
 	elapsed := time.Since(lastGeneratedInvoiceTime)
 	amt := r.FormValue("amt")
 	description := r.FormValue("description")
@@ -881,6 +912,12 @@ func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 // payment if all the parameters check out.
 func (l *lightningFaucet) payInvoice(homeTemplate *template.Template,
 	homeState *homePageContext, w http.ResponseWriter, r *http.Request) {
+
+	// Disable pay invoice if user set this parameter
+	if l.disablePayInvoices {
+		http.Error(w, "invoices payment was disabled", 403)
+		return
+	}
 
 	elapsed := time.Since(lastPayInvoiceTime)
 	if elapsed < PayInvoiceTimeout {
