@@ -10,6 +10,9 @@
   
   <div class="row d-flex justify-content-center">
     <h1 id="title" class="flow-text">Lightning Network Faucet</h1>
+    {{ if .Network }}
+    <h6>{{ .Network }}</h6>
+    {{end}}
   </div>
 
   <div class="row justify-content-center pt-4">

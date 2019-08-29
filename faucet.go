@@ -203,6 +203,9 @@ type lightningFaucet struct {
 	openChannels            map[wire.OutPoint]time.Time
 	disableGenerateInvoices bool
 	disablePayInvoices      bool
+
+	//Network info
+	network string
 }
 
 // cleanAndExpandPath expands environment variables and leading ~ in the
@@ -228,6 +231,17 @@ func cleanAndExpandPath(path string) string {
 	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
 	// but the variables can still be expanded via POSIX-style $VARIABLE.
 	return filepath.Clean(os.ExpandEnv(path))
+}
+
+// getChainInfo makes a request to get information about dcrlnd chain.
+func getChainInfo(l lnrpc.LightningClient) (*lnrpc.Chain, error) {
+	infoReq := &lnrpc.GetInfoRequest{}
+	info, err := l.GetInfo(context.Background(), infoReq)
+	if err != nil {
+		return nil, fmt.Errorf("error on get information from node")
+	}
+
+	return info.Chains[0], nil
 }
 
 // newLightningFaucet creates a new channel faucet that's bound to a cluster of
@@ -269,11 +283,26 @@ func newLightningFaucet(cfg *config,
 	// the faucet safely.
 	lnd := lnrpc.NewLightningClient(conn)
 
+	// Get chain info to stop creation if the dcrlnd and dcrlnfaucet
+	// are set in different networks.
+	chain, err := getChainInfo(lnd)
+	if err != nil {
+		return nil, err
+	}
+	netParams := normalizeNetwork(activeNetParams.Name)
+	if chain.Network != netParams {
+		return nil, fmt.Errorf(
+			"dcrlnd and dcrlnfaucet are set in different "+
+				"networks <dcrlnd: %v / dcrlnfaucet: %v>",
+			chain.Network, netParams)
+	}
+
 	return &lightningFaucet{
 		lnd:                     lnd,
 		templates:               templates,
 		disableGenerateInvoices: cfg.DisableGenerateInvoices,
 		disablePayInvoices:      cfg.DisablePayInvoices,
+		network:                 chain.Network,
 	}, nil
 }
 
@@ -494,6 +523,9 @@ type homePageContext struct {
 	PaymentHash        string
 	PaymentPreimage    string
 	PaymentHops        []*lnrpc.Hop
+
+	// Network info
+	Network string
 }
 
 // fetchHomeState is helper functions that populates the homePageContext with
@@ -560,6 +592,7 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 		PayInvoiceAction:        PayInvoiceAction,
 		DisableGenerateInvoices: l.disableGenerateInvoices,
 		DisablePayInvoices:      l.disablePayInvoices,
+		Network:                 l.network,
 	}, nil
 }
 
