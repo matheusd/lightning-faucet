@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"html/template"
@@ -236,7 +235,7 @@ func cleanAndExpandPath(path string) string {
 // getChainInfo makes a request to get information about dcrlnd chain.
 func getChainInfo(l lnrpc.LightningClient) (*lnrpc.Chain, error) {
 	infoReq := &lnrpc.GetInfoRequest{}
-	info, err := l.GetInfo(context.Background(), infoReq)
+	info, err := l.GetInfo(ctxb, infoReq)
 	if err != nil {
 		return nil, fmt.Errorf("error on get information from node")
 	}
@@ -961,7 +960,6 @@ func (l *lightningFaucet) payInvoice(homeTemplate *template.Template,
 	lastPayInvoiceTime = time.Now()
 
 	// Get the invoice and try to verify and decode.
-	ctxb := context.Background()
 	rawPayReq := r.FormValue("payinvoice")
 	payReq := strings.TrimSpace(rawPayReq)
 	payReqString := &lnrpc.PayReqString{PayReq: payReq}

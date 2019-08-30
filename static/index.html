@@ -149,7 +149,7 @@
 
         <input class="form-control {{if eq .SubmissionError 3 10 11 12 }}is-invalid{{end}}"
         {{if .FormFields }}value="{{.FormFields.Amt}}"{{end}}
-        id="amt" name="amt" type="number" required="true" value="0.01" max="0.2" step="0.0001">
+        id="amt" name="amt" type="number" required="true" value="0.01" max="0.2" step="0.000001">
 
         {{ if eq .SubmissionError 3 10 11 12 }}
           <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
@@ -193,6 +193,9 @@
   <form id="payInvoiceForm" method="post" action="/?action={{ .PayInvoiceAction }}">
       <div class="form-group">
 
+        <label for="node">
+		PayReq (maximum amount is <b>0.00001</b>)
+        </label>
         <input class="form-control {{if eq .SubmissionError 12 14 15 16 }}is-invalid{{end}}"
         id="payinvoice" name="payinvoice" type="text" required="true" placeholder="Invoce code">
         
