@@ -81,7 +81,7 @@ func main() {
 
 	// If we're not wiping all the channels, then we'll launch the set of
 	// goroutines required for the faucet to function.
-	faucet.Start()
+	faucet.Start(cfg)
 
 	// Create a new mux in order to route a request based on its path to a
 	// dedicated http.Handler.

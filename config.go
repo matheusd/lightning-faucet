@@ -50,6 +50,8 @@ type config struct {
 	MacaroonPath string `long:"macpath" description:"path to macaroons files"`
 	TLSCertPath  string `long:"tlscertpath" description:"Path to write the TLS certificate for lnd's RPC and REST services"`
 
+	DisableZombieSweeper bool `long:"disable_zombie_sweeper" description:"disable zombie channels sweeper"`
+
 	// Network
 	MainNet bool `long:"mainnet" description:"Use the main network"`
 	TestNet bool `long:"testnet" description:"Use the test network"`

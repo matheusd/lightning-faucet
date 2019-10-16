@@ -307,8 +307,10 @@ func newLightningFaucet(cfg *config,
 
 // Start launches all the goroutines necessary for routine operation of the
 // lightning faucet.
-func (l *lightningFaucet) Start() {
-	go l.zombieChanSweeper()
+func (l *lightningFaucet) Start(cfg *config) {
+	if !cfg.DisableZombieSweeper {
+		go l.zombieChanSweeper()
+	}
 }
 
 // zombieChanSweeper is a goroutine that is tasked with cleaning up "zombie"
