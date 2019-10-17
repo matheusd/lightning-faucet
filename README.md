@@ -1,8 +1,10 @@
-## Lightning Network Faucet
+lightning-faucet
+================
 
-[![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/lightninglabs/lightning-faucet/blob/master/LICENSE) 
-&nbsp;&nbsp;&nbsp;&nbsp;
+[![Build Status](https://github.com/decred/lightning-faucet/workflows/Build%20and%20Test/badge.svg)](https://github.com/decred/lightning-faucet/actions)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](http://copyfree.org)
 
+## Lightning Network Faucet Overview
 The Lightning Network Faucet is a faucet that is currently deployed on the
 Decred testnet. The following faucets are currently available:
 
@@ -23,7 +25,7 @@ Currently the TLF is only compatible with `dcrlnd`.
 In order to build from source, the following build dependencies are
 required:
 
-* **Go:** Installation instructions can be found [here](http://golang.org/doc/install).
+* **Go:** Installation instructions can be found [here](https://golang.org/doc/install).
 
 Minimum Go version supported is 1.11. This project uses go modules, so either
 compile it with GO111MODULES=on or outside of the $GOPATH.
