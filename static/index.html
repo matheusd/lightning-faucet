@@ -197,7 +197,7 @@
 		PayReq (maximum amount is <b>0.00001</b>)
         </label>
         <input class="form-control {{if eq .SubmissionError 12 14 15 16 }}is-invalid{{end}}"
-        id="payinvoice" name="payinvoice" type="text" required="true" placeholder="Invoce code">
+        id="payinvoice" name="payinvoice" type="text" required="true" placeholder="Invoice code">
         
         {{ if eq .SubmissionError 12 14 15 16 }}
           <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
