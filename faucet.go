@@ -237,7 +237,7 @@ func getChainInfo(l lnrpc.LightningClient) (*lnrpc.Chain, error) {
 	infoReq := &lnrpc.GetInfoRequest{}
 	info, err := l.GetInfo(ctxb, infoReq)
 	if err != nil {
-		return nil, fmt.Errorf("error on get information from node")
+		return nil, fmt.Errorf("get info: %v", err)
 	}
 
 	return info.Chains[0], nil
@@ -462,12 +462,20 @@ func (l *lightningFaucet) closeChannel(chanPoint *lnrpc.ChannelPoint,
 // invalid channel submission, and finally a splash page upon successful
 // creation of a channel.
 type homePageContext struct {
+	// NodeInfo is the response of lnrpc.GetInfo
+	NodeInfo *lnrpc.GetInfoResponse
+
+	// FaucetVersion is version of executable of lightning-faucet
+	FaucetVersion string
+
+	// FaucetCommit is the commit from the builing of lightning-faucet
+	FaucetCommit string
 	// NumCoins is the number of coins in Decred that the faucet has available
 	// for channel creation.
 	NumCoins float64
 
 	// GitCommitHash is the git HEAD's commit hash of
-	// $GOPATH/src/github.com/lightningnetwork/lnd
+	// $GOPATH/src/github.com/decred/dcrlnd
 	GitCommitHash string
 
 	// NodeAddr is the full <pubkey>@host:port where the faucet can be

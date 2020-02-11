@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/decred/dcrd/dcrutil"
@@ -40,8 +41,9 @@ var (
 )
 
 type config struct {
+	ShowVersion bool `short:"V" long:"version" description:"Display version information and exit"`
+
 	ConfigFile   string `short:"C" long:"configfile" description:"Path to configuration file"`
-	LndDir       string `long:"lnddir" description:"The base directory that contains lnd's data, logs, configuration file, etc."`
 	LndNode      string `long:"lnd_node" description:"network address of dcrlnd RPC (host:port)"`
 	BindAddr     string `long:"bind_addr" description:"port to listen for http"`
 	UseLeHTTPS   bool   `long:"use_le_https" description:"use https via lets encrypt"`
@@ -75,7 +77,6 @@ func normalizeNetwork(network string) string {
 func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
-		LndDir:       defaultLndDir,
 		BindAddr:     defaultBindAddr,
 		UseLeHTTPS:   defaultUseLeHTTPS,
 		WipeChannels: defaultWipeChannels,
@@ -97,9 +98,24 @@ func loadConfig() (*config, []string, error) {
 		}
 	}
 
+	// Show the version and exit if the version flag was specified.
 	appName := filepath.Base(os.Args[0])
 	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
 	usageMessage := fmt.Sprintf("Use %s -h to show usage", appName)
+	if preCfg.ShowVersion {
+		commit := SourceCommit()
+		if commit != "" {
+			commit = fmt.Sprintf("Commit %s; ", commit)
+		}
+		fmt.Printf("%s version %s (%sGo version %s %s/%s)\n",
+			appName, Version(), commit,
+			runtime.Version(), runtime.GOOS, runtime.GOARCH)
+		os.Exit(0)
+	}
+
+	appName = filepath.Base(os.Args[0])
+	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
+	usageMessage = fmt.Sprintf("Use %s -h to show usage", appName)
 
 	// If the config file path has not been modified by user, then
 	// we'll use the default config file path.

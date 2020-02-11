@@ -56,5 +56,5 @@ To enable HTTPS support via [Let's Encrypt](https://letsencrypt.org), specify
 a few additional options:
 
 ```no-highlight
-lightning-faucet -lnd_node=X.X.X.X:10009 -use_le_https -domain my-faucet-domain.example.com
+lightning-faucet --lnd_node=X.X.X.X:10009 --use_le_https --domain my-faucet-domain.example.com
 ```
