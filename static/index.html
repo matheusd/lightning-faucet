@@ -1,10 +1,6 @@
 {{template "header" .}}
 
-<div class="header py-3 px-5">
-  <a href="/">
-    <img class="header-logo" src="/static/images/logo.svg">
-  </a>
-</div>
+{{template "navbar" .}}
 
 <div class="content mb-3 p-4">
   
@@ -245,9 +241,12 @@
 {{if eq .ChannelTxid ""}}
   <div class="content mb-3 p-4">
     {{ if gt (len $.PendingChannels) 0 }}
-      <h2>Pending Channels ({{len $.PendingChannels}})</h2>
+      <h2>Pending Channels
+        <span class="badge badge-primary badge-pill">{{len $.PendingChannels}}</span>
+      </h2>
       {{range .PendingChannels}}
       <div class="channel d-inline-block p-2">
+        <span style="font-weight:bold;">ChannelPoint:</span> {{.Channel.ChannelPoint}} <br />
         <span style="font-weight:bold;">RemoteNodePub:</span> {{.Channel.RemoteNodePub}} <br />
         <span style="font-weight:bold;">Capacity:</span> {{.Channel.Capacity}} <br />
         <span style="font-weight:bold;">LocalBalance:</span> {{.Channel.LocalBalance}} <br />
@@ -262,9 +261,12 @@
 
   <div class="content p-4">
     {{ if gt (len $.ActiveChannels) 0 }}
-      <h2>Active Channels ({{len $.ActiveChannels}})</h2>
+      <h2>Active Channels
+        <span class="badge badge-primary badge-pill">{{len $.ActiveChannels}}</span>
+      </h2>
       {{range .ActiveChannels}}
         <div class="channel d-inline-block p-2">
+          <span style="font-weight:bold;">ChanID:</span> {{.ChanId}} <br />
           <span style="font-weight:bold;">RemotePubkey:</span> {{.RemotePubkey}} <br />
           <span style="font-weight:bold;">Capacity:</span> {{.Capacity}} <br />
           <span style="font-weight:bold;">LocalBalance:</span> {{.LocalBalance}} <br />

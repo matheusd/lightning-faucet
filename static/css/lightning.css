@@ -10,13 +10,18 @@ body {
     margin-bottom: 90px; /* must be the same as .footer height */
 }
 
-.header {
+nav.header {
     background: #091440;
     margin-bottom: 20px;
 }
 
-.header .header-logo {
+li {
+        padding: 0px 5px;
+}
+
+.logo {
     width: 190px;
+    margin-left: 20px;
 }
 
 @media (max-width: 1150px) {

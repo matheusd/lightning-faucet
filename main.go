@@ -87,6 +87,7 @@ func main() {
 	// dedicated http.Handler.
 	r := mux.NewRouter()
 	r.HandleFunc("/", faucet.faucetHome).Methods("POST", "GET")
+	r.HandleFunc("/info", faucet.infoPage).Methods("GET")
 
 	// Next create a static file server which will dispatch our static
 	// files. We rap the file sever http.Handler is a handler that strips

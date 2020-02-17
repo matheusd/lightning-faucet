@@ -1,0 +1,70 @@
+{{template "header" .}}
+
+{{template "navbar" .}}
+<div class="content mb-3 p-4">
+  
+  <div class="row d-flex justify-content-center">
+    <h1 id="title" class="flow-text">System Information</h1>
+  </div>
+
+  <div class="row justify-content-center pt-4">
+     <table class="table table-striped">
+            <tbody>
+                <tr>
+                    <td>Faucet version</td>
+                    <td>{{$.FaucetVersion}}</td>
+                </tr>
+                <tr>
+                    <td>Faucet commit</td>
+                    <td>{{$.FaucetCommit}}</td>
+                </tr>
+                <tr>
+                    <td>Node Network</td>
+                    <td>{{$.Network}}</td>
+                </tr>
+                <tr>
+                    <td>Node Alias</td>
+                    <td>{{$.NodeInfo.Alias}}</td>
+                </tr>
+                <tr>
+                    <td>Node Version</td>
+                    <td>{{$.NodeInfo.Version}}</td>
+                </tr>
+                <tr>
+                    <td>Node PubKey</td>
+                    <td>{{$.NodeInfo.IdentityPubkey}}</td>
+                </tr>
+                <tr>
+                    <td>Node synced to chain</td>
+                    <td>{{$.NodeInfo.SyncedToChain}}</td>
+                </tr>
+                <tr>
+                    <td>Node synced to graph</td>
+                    <td>{{$.NodeInfo.SyncedToGraph}}</td>
+                </tr>
+                <tr>
+                    <td>Node block height</td>
+                    <td>{{$.NodeInfo.BlockHeight}}</td>
+                </tr>
+                <tr>
+                    <td>Node block hash</td>
+                    <td>{{$.NodeInfo.BlockHash}}</td>
+                </tr>
+                <tr>
+                    <td>Pending Channels</td>
+                    <td>{{len $.PendingChannels}}</td>
+                </tr>
+                <tr>
+                    <td>Active Channels</td>
+                    <td>{{len $.ActiveChannels}}</td>
+                </tr>
+                <tr>
+                    <td>Inactive Channels</td>
+                    <td>{{$.NodeInfo.NumInactiveChannels}}</td>
+                </tr>
+            </tbody>
+      </table>
+  </div>
+</div>
+
+{{template "footer" .}}

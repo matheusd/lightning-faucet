@@ -113,10 +113,6 @@ func loadConfig() (*config, []string, error) {
 		os.Exit(0)
 	}
 
-	appName = filepath.Base(os.Args[0])
-	appName = strings.TrimSuffix(appName, filepath.Ext(appName))
-	usageMessage = fmt.Sprintf("Use %s -h to show usage", appName)
-
 	// If the config file path has not been modified by user, then
 	// we'll use the default config file path.
 	if preCfg.ConfigFile == "" {

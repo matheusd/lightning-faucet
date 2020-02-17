@@ -589,6 +589,9 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 	}
 
 	return &homePageContext{
+		NodeInfo:                nodeInfo,
+		FaucetVersion:           Version(),
+		FaucetCommit:            SourceCommit(),
 		NumCoins:                dcrutil.Amount(walletBalance.ConfirmedBalance).ToCoin(),
 		GitCommitHash:           strings.Replace(gitHash, "'", "", -1),
 		NodeAddr:                nodeAddr,
@@ -653,6 +656,33 @@ func (l *lightningFaucet) faucetHome(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "", http.StatusMethodNotAllowed)
 	}
+}
+
+// infoHome render information pages
+//
+// NOTE: This method implements the http.Handler interface.
+func (l *lightningFaucet) infoPage(w http.ResponseWriter, r *http.Request) {
+	// get info template from our cache of pre-compiled templates.
+	infoTemplate := l.templates.Lookup("info.html")
+
+	// In order to render the info template we'll need the necessary
+	// context, so we'll grab that from the lnd daemon now in order to get
+	// the most up to date state.
+	homeInfo, err := l.fetchHomeState()
+	if err != nil {
+		log.Error("unable to fetch info state")
+		http.Error(w, "unable to render info page", http.StatusInternalServerError)
+		return
+	}
+
+	// If the method is not GET, then we'll render an error.
+	if r.Method != http.MethodGet {
+		log.Error("method don't allowed in this url")
+		http.Error(w, "method don't allowed in this url", http.StatusMethodNotAllowed)
+		return
+	}
+
+	infoTemplate.Execute(w, homeInfo)
 }
 
 func (l *lightningFaucet) pendingChannelExistsWithNode(nodePub string) bool {
