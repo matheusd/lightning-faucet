@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/decred/dcrd/dcrutil"
 	"github.com/jessevdk/go-flags"
@@ -21,6 +22,8 @@ const (
 	defaultBindAddr         = ":80"
 	defaultUseLeHTTPS       = false
 	defaultWipeChannels     = false
+	defaultUseRealIP        = false
+	defaultActionsTimeLimit = time.Duration(30) * time.Second
 )
 
 var (
@@ -43,14 +46,16 @@ var (
 type config struct {
 	ShowVersion bool `short:"V" long:"version" description:"Display version information and exit"`
 
-	ConfigFile   string `short:"C" long:"configfile" description:"Path to configuration file"`
-	LndNode      string `long:"lnd_node" description:"network address of dcrlnd RPC (host:port)"`
-	BindAddr     string `long:"bind_addr" description:"port to listen for http"`
-	UseLeHTTPS   bool   `long:"use_le_https" description:"use https via lets encrypt"`
-	WipeChannels bool   `long:"wipe_chans" description:"close all faucet channels and exit"`
-	Domain       string `long:"domain" description:"the domain of the faucet, required for TLS"`
-	MacaroonPath string `long:"macpath" description:"path to macaroons files"`
-	TLSCertPath  string `long:"tlscertpath" description:"Path to write the TLS certificate for lnd's RPC and REST services"`
+	ConfigFile       string        `short:"C" long:"configfile" description:"Path to configuration file"`
+	LndNode          string        `long:"lnd_node" description:"network address of dcrlnd RPC (host:port)"`
+	BindAddr         string        `long:"bind_addr" description:"port to listen for http"`
+	UseLeHTTPS       bool          `long:"use_le_https" description:"use https via lets encrypt"`
+	WipeChannels     bool          `long:"wipe_chans" description:"close all faucet channels and exit"`
+	Domain           string        `long:"domain" description:"the domain of the faucet, required for TLS"`
+	MacaroonPath     string        `long:"macpath" description:"path to macaroons files"`
+	TLSCertPath      string        `long:"tlscertpath" description:"Path to write the TLS certificate for lnd's RPC and REST services"`
+	ActionsTimeLimit time.Duration `long:"actions_timelimit" description:"Time to wait before a second request can be made by a single faucet client."`
+	UseRealIP        bool          `long:"userealip" description:"Use the RealIP middleware to get the client's real IP from the X-Real-IP or X-Forwarded-For headers, in that order."`
 
 	DisableZombieSweeper bool `long:"disable_zombie_sweeper" description:"disable zombie channels sweeper"`
 
@@ -77,11 +82,13 @@ func normalizeNetwork(network string) string {
 func loadConfig() (*config, []string, error) {
 	// Default config.
 	cfg := config{
-		BindAddr:     defaultBindAddr,
-		UseLeHTTPS:   defaultUseLeHTTPS,
-		WipeChannels: defaultWipeChannels,
-		MacaroonPath: defaultMacaroonPath,
-		TLSCertPath:  defaultTLSCertPath,
+		BindAddr:         defaultBindAddr,
+		UseLeHTTPS:       defaultUseLeHTTPS,
+		WipeChannels:     defaultWipeChannels,
+		MacaroonPath:     defaultMacaroonPath,
+		TLSCertPath:      defaultTLSCertPath,
+		ActionsTimeLimit: defaultActionsTimeLimit,
+		UseRealIP:        defaultUseRealIP,
 	}
 
 	// Pre-parse the command line options to see if an alternative config
@@ -201,6 +208,14 @@ func loadConfig() (*config, []string, error) {
 
 	if cfg.UseLeHTTPS && cfg.Domain == "" {
 		err := fmt.Errorf("%s: domain must be specified to use Let's Encrypt HTTPS", funcName)
+		fmt.Fprintln(os.Stderr, err)
+		return nil, nil, err
+	}
+
+	// Verify actions time limit
+	if cfg.ActionsTimeLimit.Seconds() <= 0 {
+		str := "%s: ActionsTimeLimit cannot be <= 0"
+		err := fmt.Errorf(str, funcName)
 		fmt.Fprintln(os.Stderr, err)
 		return nil, nil, err
 	}

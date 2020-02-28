@@ -71,6 +71,9 @@ const (
 
 	// TimeLimitError indicates the user tried to do an action without wait the timelimit
 	TimeLimitError
+
+	// InternalServerError indicates that something has gone wrong on the server
+	InternalServerError
 )
 
 // String returns a human readable string describing the chanCreationError.
@@ -110,6 +113,8 @@ func (c ChanCreationError) String() string {
 		return fmt.Sprintf("The amount of invoice exceeds the limit of %d Atoms", maxPaymentAtoms)
 	case TimeLimitError:
 		return "Action time limited. Please wait."
+	case InternalServerError:
+		return "An internal error has occurred."
 
 	default:
 		return fmt.Sprintf("%v", uint8(c))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/user"
@@ -41,15 +42,6 @@ const (
 )
 
 var (
-
-	// GenerateInvoiceTimeout represents the minimum time to generate a new
-	// invoice in seconds.
-	GenerateInvoiceTimeout = time.Duration(60) * time.Second
-
-	// PayInvoiceTimeout represents the minimum time to pay a new
-	// invoice in seconds.
-	PayInvoiceTimeout = time.Duration(60) * time.Second
-
 	// GenerateInvoiceAction represents an action to generate invoice on post forms
 	GenerateInvoiceAction = "generateinvoice"
 
@@ -59,13 +51,10 @@ var (
 	// OpenChannelAction represents an action to open channel on post forms
 	OpenChannelAction = "openchannel"
 
-	// lastGeneratedInvoiceTime stores the last time an invoice generation was
-	// attempted.
-	lastGeneratedInvoiceTime time.Time
-
-	// lastPayInvoiceTime stores the last time an invoice payment was
-	// attempted.
-	lastPayInvoiceTime time.Time
+	// requestIPs stores the last time an ip did an action,
+	// and is protected by a mutex that must be held for reads/writes.
+	rateLimitMtx sync.RWMutex
+	requestIPs   map[string]time.Time
 )
 
 // lightningFaucet is a Decred Channel Faucet. The faucet itself is a web app
@@ -81,10 +70,8 @@ type lightningFaucet struct {
 
 	templates *template.Template
 
-	openChanMtx             sync.RWMutex
-	openChannels            map[wire.OutPoint]time.Time
-	disableGenerateInvoices bool
-	disablePayInvoices      bool
+	openChannels map[wire.OutPoint]time.Time
+	cfg          *config
 
 	//Network info
 	network string
@@ -113,6 +100,58 @@ func cleanAndExpandPath(path string) string {
 	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
 	// but the variables can still be expanded via POSIX-style $VARIABLE.
 	return filepath.Clean(os.ExpandEnv(path))
+}
+
+// verifyTimeLimit will return an error if the given IP address
+// has already performed an action within the given time limit.
+func verifyTimeLimit(ip string, actionsTimeLimit time.Duration) error {
+	rateLimitMtx.RLock()
+	lastRequestTime, found := requestIPs[ip]
+	rateLimitMtx.RUnlock()
+	if found {
+		nextAllowedRequest := lastRequestTime.Add(actionsTimeLimit)
+		coolDownTime := time.Until(nextAllowedRequest)
+
+		if coolDownTime >= 0 {
+			err := fmt.Errorf("client(%v) may only do an action every "+
+				"%v. Wait another %v.",
+				ip, actionsTimeLimit, coolDownTime)
+			return err
+		}
+	}
+	return nil
+}
+
+// getRealIP returns the clients IP address. If the useRealIP config is set
+// it will use the X-Real-IP or X-Forwarded-For HTTP headers, otherwise it will
+// return the request.RemoteAddr field.
+//
+// You should only use this option if you have correctly configured
+// your reverse proxies. If you do not use a reverse proxy or are configured
+// to pass on the clients headers without any filters, malicious clients
+// may inject fake IPs.
+func getRealIP(r *http.Request, useRealIP bool) (string, error) {
+	if useRealIP {
+		xForwardFor := http.CanonicalHeaderKey("X-Forwarded-For")
+		xRealIP := http.CanonicalHeaderKey("X-Real-IP")
+
+		if xrip := r.Header.Get(xRealIP); xrip != "" {
+			return xrip, nil
+		} else if xff := r.Header.Get(xForwardFor); xff != "" {
+			i := strings.Index(xff, ", ")
+			if i == -1 {
+				i = len(xff)
+			}
+			return xff[:i], nil
+		}
+		log.Warn(`"X-Forwarded-For" and "X-Real-IP" headers invalid, ` +
+			`using RemoteAddr instead`)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return "", err
+	}
+	return host, nil
 }
 
 // getChainInfo makes a request to get information about dcrlnd chain.
@@ -180,17 +219,18 @@ func newLightningFaucet(cfg *config,
 	}
 
 	return &lightningFaucet{
-		lnd:                     lnd,
-		templates:               templates,
-		disableGenerateInvoices: cfg.DisableGenerateInvoices,
-		disablePayInvoices:      cfg.DisablePayInvoices,
-		network:                 chain.Network,
+		lnd:       lnd,
+		templates: templates,
+		cfg:       cfg,
+		network:   chain.Network,
 	}, nil
 }
 
 // Start launches all the goroutines necessary for routine operation of the
 // lightning faucet.
 func (l *lightningFaucet) Start(cfg *config) {
+	requestIPs = make(map[string]time.Time)
+
 	if !cfg.DisableZombieSweeper {
 		go l.zombieChanSweeper()
 	}
@@ -402,10 +442,10 @@ type homePageContext struct {
 	// GenerateInvoiceAction indicates the form action to generate a new Invoice
 	GenerateInvoiceAction string
 
-	// Disable generate invoice form
+	// Disable generate invoices form
 	DisableGenerateInvoices bool
 
-	// Disable invoices payment form
+	// Disable invoices payments form
 	DisablePayInvoices bool
 
 	// Payment infos
@@ -485,8 +525,8 @@ func (l *lightningFaucet) fetchHomeState() (*homePageContext, error) {
 		OpenChannelAction:       OpenChannelAction,
 		GenerateInvoiceAction:   GenerateInvoiceAction,
 		PayInvoiceAction:        PayInvoiceAction,
-		DisableGenerateInvoices: l.disableGenerateInvoices,
-		DisablePayInvoices:      l.disablePayInvoices,
+		DisableGenerateInvoices: l.cfg.DisableGenerateInvoices,
+		DisablePayInvoices:      l.cfg.DisablePayInvoices,
 		Network:                 l.network,
 	}, nil
 }
@@ -625,7 +665,6 @@ func (l *lightningFaucet) connectedToNode(nodePub string) bool {
 // channels if all the parameters check out.
 func (l *lightningFaucet) openChannel(homeTemplate *template.Template,
 	homeState *homePageContext, w http.ResponseWriter, r *http.Request) {
-
 	// Before we can obtain the values the user entered in the form, we
 	// need to parse all parameters.  First attempt to establish a
 	// connection with the
@@ -802,22 +841,34 @@ func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 	homeState *homePageContext, w http.ResponseWriter, r *http.Request) {
 
 	// Disable generate invoice if user set this parameter
-	if l.disableGenerateInvoices {
+	if l.cfg.DisableGenerateInvoices {
 		http.Error(w, "generate invoices was disabled", 403)
 		return
 	}
 
-	elapsed := time.Since(lastGeneratedInvoiceTime)
+	// Get the invoice from users form and set the input value again
+	// for the users repeat the action or verify
 	amt := r.FormValue("amt")
 	description := r.FormValue("description")
-
 	homeState.FormFields["Amt"] = amt
 	homeState.FormFields["Description"] = description
-	if elapsed < GenerateInvoiceTimeout {
-		homeState.SubmissionError = InvoiceTimeNotElapsed
+
+	// Verify IP before continuing
+	clientIP, err := getRealIP(r, l.cfg.UseRealIP)
+	if err != nil {
+		log.Errorf("Can't get client ip: %v", err)
+		homeState.SubmissionError = InternalServerError
 		homeTemplate.Execute(w, homeState)
 		return
 	}
+
+	if err = verifyTimeLimit(clientIP, l.cfg.ActionsTimeLimit); err != nil {
+		log.Errorf("%v", err)
+		homeState.SubmissionError = TimeLimitError
+		homeTemplate.Execute(w, homeState)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "unable to parse form", 500)
 		return
@@ -851,7 +902,6 @@ func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 		return
 	}
 
-	lastGeneratedInvoiceTime = time.Now()
 	log.Infof("Generated invoice #%d for %s rhash=%064x", invoice.AddIndex,
 		dcrutil.Amount(amtAtoms), invoice.RHash)
 
@@ -860,6 +910,11 @@ func (l *lightningFaucet) generateInvoice(homeTemplate *template.Template,
 	if err := homeTemplate.Execute(w, homeState); err != nil {
 		log.Errorf("unable to render home page: %v", err)
 	}
+
+	// Update time for client request
+	rateLimitMtx.Lock()
+	requestIPs[clientIP] = time.Now()
+	rateLimitMtx.Unlock()
 }
 
 // payInvoice is a hybrid http.Handler that handles: the validation of the
@@ -869,21 +924,33 @@ func (l *lightningFaucet) payInvoice(homeTemplate *template.Template,
 	homeState *homePageContext, w http.ResponseWriter, r *http.Request) {
 
 	// Disable pay invoice if user set this parameter
-	if l.disablePayInvoices {
+	if l.cfg.DisablePayInvoices {
 		http.Error(w, "invoices payment was disabled", 403)
 		return
 	}
 
-	elapsed := time.Since(lastPayInvoiceTime)
-	if elapsed < PayInvoiceTimeout {
-		homeState.SubmissionError = PayInvoiceTimeNotElapsed
+	// Get the invoice from users form and set the input value again
+	// for the users repeat the action or verify
+	rawPayReq := r.FormValue("payinvoice")
+	homeState.FormFields["Payinvoice"] = rawPayReq
+
+	// Verify IP before open a channel
+	clientIP, err := getRealIP(r, l.cfg.UseRealIP)
+	if err != nil {
+		log.Errorf("Can't get client ip: %v", err)
+		homeState.SubmissionError = InternalServerError
 		homeTemplate.Execute(w, homeState)
 		return
 	}
-	lastPayInvoiceTime = time.Now()
 
-	// Get the invoice and try to verify and decode.
-	rawPayReq := r.FormValue("payinvoice")
+	if err = verifyTimeLimit(clientIP, l.cfg.ActionsTimeLimit); err != nil {
+		log.Errorf("%v", err)
+		homeState.SubmissionError = TimeLimitError
+		homeTemplate.Execute(w, homeState)
+		return
+	}
+
+	// Try to verify and decode the invoice from users form.
 	payReq := strings.TrimSpace(rawPayReq)
 	payReqString := &lnrpc.PayReqString{PayReq: payReq}
 	decodedPayReq, err := l.lnd.DecodePayReq(ctxb, payReqString)
@@ -957,4 +1024,9 @@ func (l *lightningFaucet) payInvoice(homeTemplate *template.Template,
 	if err := homeTemplate.Execute(w, homeState); err != nil {
 		log.Errorf("unable to render home page: %v", err)
 	}
+
+	// Update time for client request
+	rateLimitMtx.Lock()
+	requestIPs[clientIP] = time.Now()
+	rateLimitMtx.Unlock()
 }
