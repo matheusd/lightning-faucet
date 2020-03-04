@@ -143,11 +143,11 @@
 		Invoice Amount (in DCR - maximum amount is <b>0.2</b>)
         </label>
 
-        <input class="form-control {{if eq .SubmissionError 3 10 11 12 }}is-invalid{{end}}"
+        <input class="form-control {{if eq .SubmissionError 3 10 15}}is-invalid{{end}}"
         {{if .FormFields }}value="{{.FormFields.Amt}}"{{end}}
         id="amt" name="amt" type="number" required="true" value="0.01" max="0.2" step="0.000001">
 
-        {{ if eq .SubmissionError 3 10 11 12 }}
+        {{ if eq .SubmissionError 3 10 15}}
           <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
         {{end}}
       </div>
@@ -192,10 +192,10 @@
         <label for="node">
 		PayReq (maximum amount is <b>0.00001</b>)
         </label>
-        <input class="form-control {{if eq .SubmissionError 12 14 15 16 }}is-invalid{{end}}"
+        <input class="form-control {{if eq .SubmissionError 12 13 14 15}}is-invalid{{end}}"
         id="payinvoice" name="payinvoice" type="text" required="true" placeholder="Invoice code">
         
-        {{ if eq .SubmissionError 12 14 15 16 }}
+        {{ if eq .SubmissionError 12 13 14 15}}
           <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
         {{end}}
       </div>
