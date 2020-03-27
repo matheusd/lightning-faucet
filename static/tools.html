@@ -1,0 +1,109 @@
+{{template "header" .}}
+
+{{template "navbar" .}}
+
+{{ if not .DisablePayInvoices }}
+<div class="content mb-3 p-4">
+  <h2>Pay Invoice</h2>
+  <form id="payInvoiceForm" method="post" action="/tools?action={{ .PayInvoiceAction }}">
+      <div class="form-group">
+
+        <label for="node">
+		PayReq (maximum amount is <b>0.00001</b>)
+        </label>
+        <input class="form-control {{if eq .SubmissionError 12 13 14 15 16}}is-invalid{{end}}"
+               id="payinvoice" {{if .FormFields }}value="{{.FormFields.Payinvoice}}"{{end}} name="payinvoice" type="text" required="true" placeholder="Invoice code">
+        
+        {{ if eq .SubmissionError 12 13 14 15 16}}
+          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
+        {{end}}
+      </div>
+
+      {{ if .PaymentDestination }}
+        <div class="form-group" >
+          <h4>Invoice successfully paid</h4>
+          <div class="content p-4" style="word-break: break-all">
+            <p>Destination: {{ .PaymentDestination }}</p>
+            <p>Description: {{ .PaymentDescription }}</p>
+            <p>Amount: {{ .PaymentAmount }}</p>
+            <p>PayHash: {{ .PaymentHash }}</p>
+            <p>Preimage: {{ .PaymentPreimage }}</p>
+          </div><br />
+          <h4>Hops in channels:</h4>
+            {{range $i, $hop := .PaymentHops}}
+            <div class="channel d-inline-block p-2">
+                <span style="font-weight:bold;">Hop: </span>{{ $i }}<br />
+                <span style="font-weight:bold;">Remote PubKey: </span>{{ $hop.PubKey }}<br />
+                <span style="font-weight:bold;">ChanId: </span>{{ $hop.ChanId }}<br />
+                <span style="font-weight:bold;">Fee: </span>{{ $hop.FeeMAtoms }}<br />
+            </div>
+            {{end}}
+        </div>
+      {{ end }}
+
+      <div class="form-group row justify-content-center">
+        <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4" type="submit">Pay Invoice</button>
+      </div>
+
+      <script>
+        (function() {
+          $("input").change(function() {
+            $(this).removeClass("is-invalid");
+          });
+        })();
+      </script>
+  </form>
+</div>
+{{end}}
+
+{{ if not .DisableGenerateInvoices }}
+<div class="content mb-3 p-4">
+  <h2>Generate Invoice</h2>
+  <form id="generateInvoiceForm" method="post" action="/tools?action={{ .GenerateInvoiceAction }}">
+      <div class="form-group">
+        <label for="node">
+		Invoice Amount (in DCR - maximum amount is <b>0.2</b>)
+        </label>
+
+        <input class="form-control {{if eq .SubmissionError 3 10 15 16}}is-invalid{{end}}"
+        {{if .FormFields }}value="{{.FormFields.Amt}}"{{end}}
+        id="amt" name="amt" type="number" required="true" value="0.01" max="0.2" step="0.000001">
+
+        {{ if eq .SubmissionError 3 10 15 16}}
+          <div class="invalid-feedback">{{printf "%v" .SubmissionError}}</div>
+        {{end}}
+      </div>
+
+      <div class="form-group">
+        <label for="node">
+          Description
+        </label>
+        <input class="form-control" {{if .FormFields }}value="{{.FormFields.Description}}"{{end}}
+        id="description" name="description" type="text" maxlength="255">
+      </div>
+
+      {{ if .InvoicePaymentRequest}}
+        <div class="form-group" >
+          <h4>Invoice successfully generated</h4>
+          <div class="content p-4" style="word-break: break-all">
+            <p>{{ .InvoicePaymentRequest }}</p>
+          </div>
+        </div>
+      {{ end }}
+
+      <div class="form-group row justify-content-center">
+        <button class="btn btn-outline-primary btn-outline-primary--inverted d-lg-inline-block d-block mb-3 px-4" type="submit">Generate Invoice</button>
+      </div>
+
+      <script>
+        (function() {
+          $("input").change(function() {
+            $(this).removeClass("is-invalid");
+          });
+        })();
+      </script>
+  </form>
+</div>
+{{end}}
+
+{{template "footer" .}}

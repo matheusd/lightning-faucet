@@ -562,18 +562,10 @@ func (l *lightningFaucet) faucetHome(w http.ResponseWriter, r *http.Request) {
 	// handler.
 	case r.Method == http.MethodPost:
 		actions := r.URL.Query()["action"]
-		if len(actions) > 0 {
-			action := actions[0]
-			// action == 0 is to open channel, action == 1 is to generate, action == 2 is to pay
-			switch action {
-			case OpenChannelAction:
-				l.openChannel(homeTemplate, homeInfo, w, r)
-			case GenerateInvoiceAction:
-				l.generateInvoice(homeTemplate, homeInfo, w, r)
-			case PayInvoiceAction:
-				l.payInvoice(homeTemplate, homeInfo, w, r)
-			}
+		if len(actions) > 0 && actions[0] == OpenChannelAction {
+			l.openChannel(homeTemplate, homeInfo, w, r)
 		}
+
 	// If the method isn't either of those, then this is an error as we
 	// only support the two methods above.
 	default:
@@ -581,7 +573,8 @@ func (l *lightningFaucet) faucetHome(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// infoHome render information pages
+// infoPage renders the info page for the faucet. This includes all the information
+// about the faucet and the dcrlnd node.
 //
 // NOTE: This method implements the http.Handler interface.
 func (l *lightningFaucet) infoPage(w http.ResponseWriter, r *http.Request) {
@@ -606,6 +599,51 @@ func (l *lightningFaucet) infoPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	infoTemplate.Execute(w, homeInfo)
+}
+
+// toolsPage renders the tools page for the faucet. This includes the
+// forms to create and pay an invoice.
+//
+// NOTE: This method implements the http.Handler interface.
+func (l *lightningFaucet) toolsPage(w http.ResponseWriter, r *http.Request) {
+	// get tool template from our cache of pre-compiled templates.
+	toolsTemplate := l.templates.Lookup("tools.html")
+
+	// In order to render the tool template we'll need the necessary
+	// context, so we'll grab that from the lnd daemon now in order to get
+	// the most up to date state.
+	homeInfo, err := l.fetchHomeState()
+	if err != nil {
+		log.Error("unable to fetch info state")
+		http.Error(w, "unable to render info page", http.StatusInternalServerError)
+		return
+	}
+
+	// If the method is GET, then we'll render the tools page with the form
+	// itself.
+	switch {
+	case r.Method == http.MethodGet:
+		toolsTemplate.Execute(w, homeInfo)
+
+	// Otherwise, if the method is POST, then the user is submitting an action
+	case r.Method == http.MethodPost:
+		actions := r.URL.Query()["action"]
+		if len(actions) > 0 {
+			action := actions[0]
+			// action == 0 is to open channel, action == 1 is to generate, action == 2 is to pay
+			switch action {
+			case GenerateInvoiceAction:
+				l.generateInvoice(toolsTemplate, homeInfo, w, r)
+			case PayInvoiceAction:
+				l.payInvoice(toolsTemplate, homeInfo, w, r)
+			}
+		}
+
+	// If the method isn't either of those, then this is an error as we
+	// only support the two methods above.
+	default:
+		http.Error(w, "", http.StatusMethodNotAllowed)
+	}
 }
 
 func (l *lightningFaucet) pendingChannelExistsWithNode(nodePub string) bool {

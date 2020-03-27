@@ -88,6 +88,11 @@ func main() {
 	r.HandleFunc("/", faucet.faucetHome).Methods("POST", "GET")
 	r.HandleFunc("/info", faucet.infoPage).Methods("GET")
 
+	// If users disable all actions, then disable the route
+	if !(cfg.DisableGenerateInvoices && cfg.DisablePayInvoices) {
+		r.HandleFunc("/tools", faucet.toolsPage).Methods("POST", "GET")
+	}
+
 	// Next create a static file server which will dispatch our static
 	// files. We rap the file sever http.Handler is a handler that strips
 	// out the absolute file path since it'll dispatch based on solely the
