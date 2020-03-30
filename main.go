@@ -11,9 +11,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/golang/crypto/acme/autocert"
-
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 // equal reports whether the first argument is equal to any of the remaining
